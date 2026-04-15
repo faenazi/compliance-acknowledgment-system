@@ -19,7 +19,27 @@ internal sealed class AcknowledgmentRepository : IAcknowledgmentRepository
         CancellationToken cancellationToken) =>
         _db.AcknowledgmentDefinitions
             .Include(d => d.Versions)
+                .ThenInclude(v => v.Audience!)
+                .ThenInclude(a => a.Rules)
             .FirstOrDefaultAsync(d => d.Id == definitionId, cancellationToken);
+
+    public async Task<AcknowledgmentDefinition?> FindDefinitionByVersionIdAsync(
+        Guid versionId,
+        CancellationToken cancellationToken)
+    {
+        var definitionId = await _db.AcknowledgmentVersions
+            .Where(v => v.Id == versionId)
+            .Select(v => (Guid?)v.AcknowledgmentDefinitionId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (definitionId is null)
+        {
+            return null;
+        }
+
+        return await FindByIdAsync(definitionId.Value, cancellationToken).ConfigureAwait(false);
+    }
 
     public async Task<int> GetMaxVersionNumberAsync(
         Guid definitionId,

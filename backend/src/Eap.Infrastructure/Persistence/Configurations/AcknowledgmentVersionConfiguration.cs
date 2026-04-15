@@ -1,4 +1,5 @@
 using Eap.Domain.Acknowledgment;
+using Eap.Domain.Audience;
 using Eap.Domain.Policy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -23,6 +24,10 @@ internal sealed class AcknowledgmentVersionConfiguration
         builder.Property(v => v.PolicyVersionId).IsRequired();
 
         builder.Property(v => v.ActionType)
+            .HasConversion<int>()
+            .IsRequired();
+
+        builder.Property(v => v.RecurrenceModel)
             .HasConversion<int>()
             .IsRequired();
 
@@ -61,5 +66,12 @@ internal sealed class AcknowledgmentVersionConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(v => v.PolicyVersionId);
+
+        // 0..1 audience owned by the version (BR-050). Deleting the version
+        // cascades to its audience configuration.
+        builder.HasOne(v => v.Audience)
+            .WithOne()
+            .HasForeignKey<AudienceDefinition>(a => a.AcknowledgmentVersionId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

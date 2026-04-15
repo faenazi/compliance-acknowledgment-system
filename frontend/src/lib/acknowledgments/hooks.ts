@@ -18,6 +18,7 @@ import {
   listAcknowledgmentDefinitions,
   listAcknowledgmentVersions,
   publishAcknowledgmentVersion,
+  setAcknowledgmentVersionRecurrence,
   updateAcknowledgmentDefinition,
   updateAcknowledgmentVersionDraft,
 } from "@/lib/api/acknowledgments";
@@ -30,6 +31,7 @@ import type {
   AcknowledgmentVersionSummary,
   CreateAcknowledgmentDefinitionInput,
   CreateAcknowledgmentVersionInput,
+  SetRecurrenceInput,
   UpdateAcknowledgmentDefinitionInput,
   UpdateAcknowledgmentVersionDraftInput,
 } from "./types";
@@ -199,6 +201,26 @@ export function useUpdateAcknowledgmentVersionDraft(
   >({
     mutationFn: (input) =>
       updateAcknowledgmentVersionDraft(definitionId, versionId, input),
+    onSuccess: (data, vars, ctx) => {
+      qc.invalidateQueries({
+        queryKey: acknowledgmentKeys.version(definitionId, versionId),
+      });
+      qc.invalidateQueries({ queryKey: acknowledgmentKeys.versions(definitionId) });
+      qc.invalidateQueries({ queryKey: acknowledgmentKeys.detail(definitionId) });
+      options?.onSuccess?.(data, vars, ctx);
+    },
+    ...options,
+  });
+}
+
+export function useSetAcknowledgmentVersionRecurrence(
+  definitionId: string,
+  versionId: string,
+  options?: UseMutationOptions<AcknowledgmentVersionDetail, ApiError, SetRecurrenceInput>,
+) {
+  const qc = useQueryClient();
+  return useMutation<AcknowledgmentVersionDetail, ApiError, SetRecurrenceInput>({
+    mutationFn: (input) => setAcknowledgmentVersionRecurrence(definitionId, versionId, input),
     onSuccess: (data, vars, ctx) => {
       qc.invalidateQueries({
         queryKey: acknowledgmentKeys.version(definitionId, versionId),

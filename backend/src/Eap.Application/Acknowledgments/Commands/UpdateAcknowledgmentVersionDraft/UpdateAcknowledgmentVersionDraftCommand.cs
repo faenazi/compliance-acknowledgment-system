@@ -10,6 +10,7 @@ public sealed record UpdateAcknowledgmentVersionDraftCommand(
     Guid VersionId,
     Guid PolicyVersionId,
     ActionType ActionType,
+    RecurrenceModel RecurrenceModel,
     string? VersionLabel,
     string? Summary,
     string? CommitmentText,

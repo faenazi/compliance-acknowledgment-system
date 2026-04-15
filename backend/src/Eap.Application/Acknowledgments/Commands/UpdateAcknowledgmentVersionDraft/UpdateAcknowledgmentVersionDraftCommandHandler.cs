@@ -68,6 +68,7 @@ public sealed class UpdateAcknowledgmentVersionDraftCommandHandler
         version.UpdateDraftMetadata(
             policyVersionId: request.PolicyVersionId,
             actionType: request.ActionType,
+            recurrenceModel: request.RecurrenceModel,
             versionLabel: request.VersionLabel,
             summary: request.Summary,
             commitmentText: request.CommitmentText,

@@ -17,6 +17,8 @@ public sealed class AcknowledgmentVersionSummaryDto
 
     public ActionType ActionType { get; init; }
 
+    public RecurrenceModel RecurrenceModel { get; init; }
+
     public AcknowledgmentVersionStatus Status { get; init; }
 
     public DateOnly? StartDate { get; init; }
@@ -42,6 +44,8 @@ public sealed class AcknowledgmentVersionDetailDto
     public Guid PolicyVersionId { get; init; }
 
     public ActionType ActionType { get; init; }
+
+    public RecurrenceModel RecurrenceModel { get; init; }
 
     public string? Summary { get; init; }
 

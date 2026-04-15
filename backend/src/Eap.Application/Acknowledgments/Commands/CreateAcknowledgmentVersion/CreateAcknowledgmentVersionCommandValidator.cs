@@ -16,6 +16,9 @@ public sealed class CreateAcknowledgmentVersionCommandValidator
         RuleFor(x => x.ActionType)
             .IsInEnum().WithMessage("Action type is invalid.");
 
+        RuleFor(x => x.RecurrenceModel)
+            .IsInEnum().WithMessage("Recurrence model is invalid.");
+
         RuleFor(x => x.VersionLabel).MaximumLength(64);
         RuleFor(x => x.Summary).MaximumLength(4000);
         RuleFor(x => x.CommitmentText).MaximumLength(4000);

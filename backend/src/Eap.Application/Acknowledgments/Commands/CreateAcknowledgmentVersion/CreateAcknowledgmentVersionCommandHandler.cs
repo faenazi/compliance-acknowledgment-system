@@ -71,6 +71,7 @@ public sealed class CreateAcknowledgmentVersionCommandHandler
             nextVersionNumber: nextNumber,
             policyVersionId: request.PolicyVersionId,
             actionType: request.ActionType,
+            recurrenceModel: request.RecurrenceModel,
             versionLabel: request.VersionLabel,
             summary: request.Summary,
             commitmentText: request.CommitmentText,

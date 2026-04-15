@@ -10,6 +10,7 @@ import {
 } from "@/components/acknowledgments/AcknowledgmentStatusBadge";
 import { ActionTypeBadge } from "@/components/acknowledgments/ActionTypeBadge";
 import { AcknowledgmentVersionForm } from "@/components/acknowledgments/AcknowledgmentVersionForm";
+import { RecurrenceSummary } from "@/components/recurrence/RecurrenceSummary";
 import {
   useAcknowledgmentDefinition,
   useAcknowledgmentVersion,
@@ -212,6 +213,45 @@ export default function AcknowledgmentVersionDetailPage({ params }: Props) {
           )}
         </CardBody>
       </Card>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>نموذج التكرار</CardTitle>
+            <Link
+              href={`/admin/acknowledgments/${definitionId}/versions/${versionId}/recurrence`}
+              className="text-sm text-[var(--color-brand-primary)] hover:underline"
+            >
+              {canEdit ? "تعديل" : "عرض"}
+            </Link>
+          </CardHeader>
+          <CardBody>
+            <RecurrenceSummary
+              recurrenceModel={version.recurrenceModel}
+              startDate={version.startDate}
+              dueDate={version.dueDate}
+            />
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>الجمهور المستهدف</CardTitle>
+            <Link
+              href={`/admin/acknowledgments/${definitionId}/versions/${versionId}/audience`}
+              className="text-sm text-[var(--color-brand-primary)] hover:underline"
+            >
+              {canEdit ? "إدارة" : "عرض"}
+            </Link>
+          </CardHeader>
+          <CardBody>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              اضبط قواعد الإدراج والاستثناء وعاين حجم الجمهور قبل النشر
+              (BR-032).
+            </p>
+          </CardBody>
+        </Card>
+      </div>
     </>
   );
 }

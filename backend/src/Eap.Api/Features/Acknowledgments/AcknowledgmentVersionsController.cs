@@ -1,6 +1,7 @@
 using Eap.Application.Acknowledgments.Commands.ArchiveAcknowledgmentVersion;
 using Eap.Application.Acknowledgments.Commands.CreateAcknowledgmentVersion;
 using Eap.Application.Acknowledgments.Commands.PublishAcknowledgmentVersion;
+using Eap.Application.Acknowledgments.Commands.SetAcknowledgmentVersionRecurrence;
 using Eap.Application.Acknowledgments.Commands.UpdateAcknowledgmentVersionDraft;
 using Eap.Application.Acknowledgments.Models;
 using Eap.Application.Acknowledgments.Queries.GetAcknowledgmentVersionById;
@@ -71,6 +72,7 @@ public sealed class AcknowledgmentVersionsController : ControllerBase
                 definitionId,
                 request.PolicyVersionId,
                 request.ActionType,
+                request.RecurrenceModel,
                 request.VersionLabel,
                 request.Summary,
                 request.CommitmentText,
@@ -101,9 +103,33 @@ public sealed class AcknowledgmentVersionsController : ControllerBase
                 versionId,
                 request.PolicyVersionId,
                 request.ActionType,
+                request.RecurrenceModel,
                 request.VersionLabel,
                 request.Summary,
                 request.CommitmentText,
+                request.StartDate,
+                request.DueDate),
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPut("{versionId:guid}/recurrence")]
+    [Authorize(Roles = SystemRoles.AcknowledgmentManager + "," + SystemRoles.SystemAdministrator)]
+    [ProducesResponseType(typeof(AcknowledgmentVersionDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AcknowledgmentVersionDetailDto>> SetRecurrence(
+        Guid definitionId,
+        Guid versionId,
+        [FromBody] SetAcknowledgmentVersionRecurrenceRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(
+            new SetAcknowledgmentVersionRecurrenceCommand(
+                definitionId,
+                versionId,
+                request.RecurrenceModel,
                 request.StartDate,
                 request.DueDate),
             cancellationToken);
