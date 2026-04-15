@@ -1,1 +1,600 @@
-# Sprint Status
+# Sprint Implementation Status
+
+## 1. Purpose
+
+This document is used to track the implementation status of the Enterprise Acknowledgment Platform (EAP) across all planned sprints.
+
+It provides a simple and structured way to track:
+
+- sprint objectives
+- implementation progress
+- completed scope
+- in-progress scope
+- blockers
+- key decisions
+- risks
+- next steps
+
+This file should be updated continuously during delivery.
+
+---
+
+## 2. Status Scale
+
+Use the following status values consistently:
+
+- Not Started
+- In Progress
+- Completed
+- Blocked
+- Deferred
+
+---
+
+## 3. Overall Delivery Status
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Foundation & Setup | Not Started | |
+| Identity & Access | Not Started | |
+| Policy Management | Not Started | |
+| Acknowledgment Core | Not Started | |
+| Audience & Recurrence | Not Started | |
+| Form-Based Disclosures | Not Started | |
+| User Portal | Not Started | |
+| Admin Portal & Operations | Not Started | |
+| Compliance, Notifications & Reports | Not Started | |
+| UAT / Stabilization | Not Started | |
+
+---
+
+## 4. Sprint 0 – Foundation & Setup
+
+### Sprint Goal
+Establish the technical and UI foundation of the platform.
+
+### Status
+Not Started
+
+### Planned Scope
+- ASP.NET Core solution structure
+- modular architecture setup
+- vertical slice conventions
+- MediatR setup
+- FluentValidation setup
+- AutoMapper setup
+- Serilog setup
+- Swagger setup
+- EF Core setup
+- Next.js app structure
+- Tailwind configuration
+- TypeScript setup
+- React Query setup
+- Axios setup
+- React Hook Form setup
+- Zod setup
+- RTL app shell
+- design tokens foundation
+- shared base UI components
+
+### Progress Summary
+- Not started yet
+
+### Completed Items
+- None
+
+### In Progress Items
+- None
+
+### Blockers
+- None
+
+### Key Decisions
+- None yet
+
+### Risks / Notes
+- Foundation quality directly affects all later sprints
+
+### Next Actions
+- initialize repositories and solution structure
+- confirm package installation versions
+- implement base app shells
+
+---
+
+## 5. Sprint 1 – Identity & Access Foundations
+
+### Sprint Goal
+Implement authentication, user profile creation, roles, scopes, and access foundations.
+
+### Status
+Not Started
+
+### Planned Scope
+- LDAP / AD authentication
+- user login flow
+- local user profile creation
+- role model
+- scope model
+- user-role assignment model
+- authenticated app shell
+- role-aware navigation foundation
+
+### Progress Summary
+- Not started yet
+
+### Completed Items
+- None
+
+### In Progress Items
+- None
+
+### Blockers
+- None
+
+### Key Decisions
+- None yet
+
+### Risks / Notes
+- LDAP integration quality is critical
+- role and scope design must remain simple but extensible
+
+### Next Actions
+- confirm authentication flow design
+- implement user and access entities
+- connect login flow to app shell
+
+---
+
+## 6. Sprint 2 – Policy Management
+
+### Sprint Goal
+Deliver policy creation, document upload, policy versioning, and publication.
+
+### Status
+Not Started
+
+### Planned Scope
+- policy entity
+- policy version entity
+- policy document handling
+- policy CRUD
+- policy version management
+- publish/archive behavior
+- historical version visibility
+
+### Progress Summary
+- Not started yet
+
+### Completed Items
+- None
+
+### In Progress Items
+- None
+
+### Blockers
+- None
+
+### Key Decisions
+- None yet
+
+### Risks / Notes
+- historical integrity must be preserved
+- document handling approach must remain simple in MVP
+
+### Next Actions
+- define upload storage approach
+- implement policy list and version screens
+- enforce one published version rule
+
+---
+
+## 7. Sprint 3 – Acknowledgment Core
+
+### Sprint Goal
+Deliver the core acknowledgment/disclosure definition and versioning model.
+
+### Status
+Not Started
+
+### Planned Scope
+- acknowledgment definition entity
+- acknowledgment version entity
+- action type support
+- link to policy version
+- acknowledgment CRUD
+- version lifecycle
+- publish/archive behavior
+
+### Progress Summary
+- Not started yet
+
+### Completed Items
+- None
+
+### In Progress Items
+- None
+
+### Blockers
+- None
+
+### Key Decisions
+- None yet
+
+### Risks / Notes
+- version linkage to policy must remain strict
+- action types must remain aligned with business model
+
+### Next Actions
+- implement definition and version entities
+- implement version-aware APIs
+- build acknowledgment admin screens
+
+---
+
+## 8. Sprint 4 – Audience Targeting & Recurrence
+
+### Sprint Goal
+Deliver user targeting and recurring action logic.
+
+### Status
+Not Started
+
+### Planned Scope
+- audience definitions
+- audience rules
+- exclusions
+- recurrence model support
+- start/due date behavior
+- user action requirement generation
+
+### Progress Summary
+- Not started yet
+
+### Completed Items
+- None
+
+### In Progress Items
+- None
+
+### Blockers
+- None
+
+### Key Decisions
+- None yet
+
+### Risks / Notes
+- targeting accuracy depends on AD data quality
+- recurrence logic must remain deterministic and simple
+
+### Next Actions
+- implement audience rule model
+- implement recurrence model behavior
+- build audience and recurrence admin pages
+
+---
+
+## 9. Sprint 5 – Form-Based Disclosures
+
+### Sprint Goal
+Deliver dynamic form-based disclosures for business-critical scenarios.
+
+### Status
+Not Started
+
+### Planned Scope
+- form definition model
+- JSON-driven form schema
+- supported field types
+- form definition management
+- dynamic form rendering
+- submission validation
+- submission storage
+
+### Progress Summary
+- Not started yet
+
+### Completed Items
+- None
+
+### In Progress Items
+- None
+
+### Blockers
+- None
+
+### Key Decisions
+- None yet
+
+### Risks / Notes
+- form complexity must be controlled
+- do not allow sprint scope to turn into a full form builder
+- conflict of interest and gifts/hospitality are priority validation cases
+
+### Next Actions
+- implement schema structure
+- implement renderer and validator
+- test priority business forms
+
+---
+
+## 10. Sprint 6 – User Portal
+
+### Sprint Goal
+Deliver the employee-facing portal and completion flows.
+
+### Status
+Not Started
+
+### Planned Scope
+- user dashboard
+- my required actions
+- action details
+- policy viewer
+- simple acknowledgment submission
+- disclosure submission
+- submission confirmation
+- my history
+
+### Progress Summary
+- Not started yet
+
+### Completed Items
+- None
+
+### In Progress Items
+- None
+
+### Blockers
+- None
+
+### Key Decisions
+- None yet
+
+### Risks / Notes
+- user experience must remain low-friction
+- policy reading and submission path must be very clear
+- no blocking behavior should be introduced in Phase 1
+
+### Next Actions
+- implement end-user APIs
+- build dashboard and action flow pages
+- validate long form readability
+
+---
+
+## 11. Sprint 7 – Admin Portal & Operations
+
+### Sprint Goal
+Deliver the admin operational experience for managing actions and monitoring usage.
+
+### Status
+Not Started
+
+### Planned Scope
+- admin dashboard
+- policy management refinements
+- acknowledgment management refinements
+- user action monitoring
+- historical detail access
+- operational summary views
+
+### Progress Summary
+- Not started yet
+
+### Completed Items
+- None
+
+### In Progress Items
+- None
+
+### Blockers
+- None
+
+### Key Decisions
+- None yet
+
+### Risks / Notes
+- admin portal must stay structured and efficient
+- avoid making the dashboard overly analytical in MVP
+
+### Next Actions
+- implement monitoring queries
+- build admin monitoring screens
+- refine operational summaries
+
+---
+
+## 12. Sprint 8 – Compliance, Notifications, Audit & Reports
+
+### Sprint Goal
+Deliver operational visibility, outbound notifications, and release-readiness functions.
+
+### Status
+Not Started
+
+### Planned Scope
+- compliance dashboard
+- non-compliant user reporting
+- department-level reporting
+- Exchange notifications
+- reminders
+- overdue notifications
+- audit log explorer
+- exports
+- final MVP integration checks
+
+### Progress Summary
+- Not started yet
+
+### Completed Items
+- None
+
+### In Progress Items
+- None
+
+### Blockers
+- None
+
+### Key Decisions
+- None yet
+
+### Risks / Notes
+- Exchange integration may require environment coordination
+- reports must stay operational, not become BI-heavy
+- audit logs must remain trustworthy and easy to inspect
+
+### Next Actions
+- implement compliance queries
+- implement notification sender
+- implement audit explorer and export flows
+
+---
+
+## 13. Optional Sprint 9 – Stabilization & Launch Readiness
+
+### Sprint Goal
+Provide a final hardening sprint if needed before release.
+
+### Status
+Not Started
+
+### Planned Scope
+- defect fixes
+- UAT fixes
+- performance tuning
+- permission validation
+- release readiness checks
+- documentation alignment
+- deployment support
+
+### Progress Summary
+- Not started yet
+
+### Completed Items
+- None
+
+### In Progress Items
+- None
+
+### Blockers
+- None
+
+### Key Decisions
+- None yet
+
+### Risks / Notes
+- this sprint should not become a place for new features
+- use only if required by delivery quality or UAT findings
+
+### Next Actions
+- reserve only if needed
+- focus on stability, not expansion
+
+---
+
+## 14. Current Risks Register
+
+| Risk ID | Risk | Impact | Status | Mitigation |
+|--------|------|--------|--------|------------|
+| R-001 | LDAP / AD integration complexity | High | Open | Validate authentication design early |
+| R-002 | Exchange email delivery issues | Medium | Open | Test integration before reporting sprint ends |
+| R-003 | Scope creep into full form builder | High | Open | Keep form scope controlled and JSON-based |
+| R-004 | AD data quality affecting targeting | Medium | Open | Validate department/group mapping early |
+| R-005 | Recurrence logic becoming too complex | Medium | Open | Keep MVP recurrence rules explicit and limited |
+| R-006 | Reporting queries becoming slow | Medium | Open | Optimize query design and pagination |
+| R-007 | Admin portal becoming overly dense | Medium | Open | Follow UX principles and page discipline |
+
+---
+
+## 15. Current Decisions Log
+
+| Decision ID | Decision | Date | Status | Notes |
+|------------|----------|------|--------|-------|
+| D-001 | Phase 1 will not include blocking enforcement | TBD | Approved | |
+| D-002 | Form-based disclosures are included in Phase 1 | TBD | Approved | |
+| D-003 | No full visual form builder in Phase 1 | TBD | Approved | |
+| D-004 | Access model uses Role + Scope, not department as permission | TBD | Approved | |
+| D-005 | LDAP / AD is the identity source of truth | TBD | Approved | |
+| D-006 | Exchange is the approved notification channel | TBD | Approved | |
+
+---
+
+## 16. Open Items / Pending Clarifications
+
+| Item ID | Topic | Owner | Status | Notes |
+|--------|-------|-------|--------|-------|
+| O-001 | Final deployment/authentication topology | TBD | Open | |
+| O-002 | File storage approach for uploaded documents | TBD | Open | |
+| O-003 | Export format expectations for reports | TBD | Open | |
+| O-004 | Exact reminder schedule rules | TBD | Open | |
+| O-005 | Whether draft-save is needed for long disclosures in MVP | TBD | Open | |
+
+---
+
+## 17. Suggested Update Format Per Sprint
+
+When updating this file after each sprint, use the following structure:
+
+### Sprint Status Update
+- Status:
+- Completed:
+- In Progress:
+- Deferred:
+- Blockers:
+- Decisions:
+- Risks:
+- Next Sprint Readiness:
+
+---
+
+## 18. Weekly Progress Summary Template
+
+Use this section optionally for short operational updates.
+
+### Week [X]
+- overall progress:
+- key completed items:
+- main blocker:
+- key decision:
+- next focus:
+
+---
+
+## 19. MVP Readiness Checklist
+
+Use this checklist to assess whether the platform is ready for controlled launch.
+
+| Item | Status | Notes |
+|------|--------|-------|
+| LDAP / AD authentication works | Not Started | |
+| User profiles are created and synced | Not Started | |
+| Policies can be created and versioned | Not Started | |
+| Acknowledgments can be defined and published | Not Started | |
+| Form-based disclosures work | Not Started | |
+| Audience targeting works correctly | Not Started | |
+| Recurrence logic works correctly | Not Started | |
+| User portal is usable end-to-end | Not Started | |
+| Admin portal is usable end-to-end | Not Started | |
+| Notifications are sent through Exchange | Not Started | |
+| Compliance views are available | Not Started | |
+| Reports can be exported | Not Started | |
+| Audit records are visible and trustworthy | Not Started | |
+| UAT critical issues are closed | Not Started | |
+
+---
+
+## 20. Summary
+
+This document is the living delivery tracker for the EAP project.
+
+It should be updated continuously to reflect:
+
+- current sprint progress
+- decisions made
+- blockers encountered
+- delivery risks
+- readiness for the next sprint
+- readiness for MVP launch
+
+It is intended to keep business, engineering, and project leadership aligned throughout implementation.
