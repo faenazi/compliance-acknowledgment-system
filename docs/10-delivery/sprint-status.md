@@ -35,8 +35,8 @@ Use the following status values consistently:
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Foundation & Setup | In Progress | Backend and frontend skeletons created; no business features yet |
-| Identity & Access | Not Started | |
+| Foundation & Setup | Completed | Backend and frontend skeletons created; authenticated app shell in place |
+| Identity & Access | In Progress | LDAP auth, User/Role/Scope/Assignment model, access context and role-aware shell delivered in Sprint 1 |
 | Policy Management | Not Started | |
 | Acknowledgment Core | Not Started | |
 | Audience & Recurrence | Not Started | |
@@ -135,7 +135,7 @@ In Progress
 Implement authentication, user profile creation, roles, scopes, and access foundations.
 
 ### Status
-Not Started
+Completed
 
 ### Planned Scope
 - LDAP / AD authentication
@@ -148,10 +148,39 @@ Not Started
 - role-aware navigation foundation
 
 ### Progress Summary
-- Not started yet
+- LDAP / Active Directory authentication implemented end-to-end via `System.DirectoryServices.Protocols` (Microsoft BCL package, pinned at 10.0.0). Credentials are validated on the server through a search-then-user-bind flow that works cross-platform and keeps the service account optional.
+- All LDAP configuration is externalised through the strongly-typed `LdapOptions` (host, port, SSL, domain, base DN, bind DN, user search filter, attribute map, timeout) and validated via DataAnnotations. Bind password is read from environment variables/secrets only; `appsettings.json` ships placeholders.
+- Domain model introduced under `Eap.Domain/Identity`: `User`, `Role`, `Scope` (with `ScopeType` = Global/Department/OwnedContent), `UserRoleAssignment`, plus a canonical `SystemRoles` constant list mirrored on the frontend.
+- Persistence configurations created for all four entities under the `identity` schema, with unique indexes on `Users.Username`, `Roles.Name`, and `(Scopes.Type, Reference)`. `EapDbContext` now applies configurations from assembly.
+- Application layer owns the auth use cases as explicit MediatR commands/queries: `LoginCommand`, `LogoutCommand`, `GetCurrentUserQuery`. `LoginCommandHandler` orchestrates LDAP bind → profile provisioning → session sign-in → audit emission; nothing business-logic-related lives in the controller.
+- `UserProvisioner` creates the local profile on first successful login and refreshes AD-derived attributes (display name, email, department, job title) on every subsequent login (BR-061/BR-063). Bootstrap role assignment (default End User role + configurable administrator roster) is delegated to `IDefaultRoleAssigner` so policy can evolve independently of profile sync.
+- `ICurrentUser` access context surfaced to the Application layer with Roles + strongly-typed scope tuples. Authentication (cookie sign-in, claims) is implemented behind `IAuthenticationSession` in the API layer, keeping authentication concerns distinct from the authorization model.
+- Cookie-based authentication scheme `eap.session` configured with HttpOnly, SameSite=Lax, sliding 8-hour expiration. Unauthenticated API calls return 401/403 (no server-side redirects) so the frontend owns the login UX.
+- Identity audit hooks emitted via a dedicated `IIdentityAuditLogger` — `LoginSucceeded`, `LoginFailed`, `UserProvisioned`, `UserSynchronized`, `LoggedOut` — tagged with `AuditEvent` for downstream extraction. A dedicated immutable AuditLog table remains a later-sprint concern per the audit module roadmap.
+- Reference-data seeder (`IdentitySeeder`) runs on start-up, seeding all `SystemRoles` and the Global `Scope` idempotently. Seeding is toggleable via `Identity:Seed:Enabled`.
+- Frontend login page now posts credentials to `/api/auth/login` using React Hook Form + Zod manual validation. Successful login routes to `/admin/dashboard` for admin roles, otherwise `/dashboard`.
+- New `SessionProvider` exposes the authenticated user via React context + TanStack Query (`/api/auth/me`). `AuthGuard` wraps protected routes with role allow-list support; `AuthenticatedAppShell` + `PortalNav` + `UserMenu` compose a role-aware header.
+- Route layouts added: `(user)/layout.tsx` guards user portal pages with any authenticated session; `admin/layout.tsx` additionally requires one of the admin-capable roles. The root `/` resolves the session and redirects to the correct landing page.
+- Lightweight profile page (`(user)/profile/page.tsx`) displays AD-sourced attributes and effective roles as required by `user-portal-pages §14`.
 
 ### Completed Items
-- None
+- `LdapOptions` + `LdapAttributeMap` with full env/secret-driven configuration
+- `LdapConnectionFactory`, `LdapUserDirectory`, `LdapAuthenticationService` (with RFC 4515 filter escaping)
+- `User` / `Role` / `Scope` / `UserRoleAssignment` domain entities and EF configurations
+- `EapDbContext` updated to expose identity DbSets and scan assembly for configurations
+- `UserRepository` with active-assignment projection, `DefaultRoleAssigner`
+- `UserProvisioner` (first-login create, AD attribute refresh on every sync)
+- `LoginCommand` / `LogoutCommand` / `GetCurrentUserQuery` with validators and handlers
+- `ICurrentUser`, `IAuthenticationSession`, `IIdentityAuditLogger` application abstractions
+- Cookie authentication scheme (`EapCookie`) + `CurrentUserService` + `HttpAuthenticationSession`
+- `IdentitySeeder` (roles + Global scope) wired into application start-up
+- `AuthController` exposing `/api/auth/{login,logout,me}` (thin, delegates to MediatR)
+- `appsettings.json` + `appsettings.Development.json` carry `Ldap`, `Identity:Provisioning`, `Identity:Seed` sections
+- Frontend `SessionProvider`, `AuthGuard`, `AuthenticatedAppShell`, `PortalNav`, `UserMenu`
+- Real LDAP-backed login page with Zod-based validation and role-aware redirect
+- `(user)` and `admin` route group layouts with server-side auth gate
+- Lightweight profile page showing AD attributes and effective roles
+- Design-system-aligned styling for the login form, header, and guard states
 
 ### In Progress Items
 - None
@@ -160,16 +189,24 @@ Not Started
 - None
 
 ### Key Decisions
-- None yet
+- **Identity library**: authentication uses `System.DirectoryServices.Protocols` (Microsoft BCL-provided package, pinned at 10.0.0). This package is part of the Microsoft platform family alongside the approved `Microsoft.*` stack and keeps LDAP integration first-party.
+- **Session transport**: HTTP-only `eap.session` cookie issued by ASP.NET Core cookie authentication. API endpoints never redirect — unauthenticated calls receive 401/403 and the SPA handles the UX. This keeps the frontend and backend authentication concerns separate.
+- **Role model is local**: LDAP group memberships are captured in the directory snapshot but are **not** mapped to platform roles at this stage (BR-141/BR-142). Roles and scopes remain local application data and are assigned through provisioning config + future admin tooling.
+- **Bootstrap administrators**: `Identity:Provisioning:SystemAdministrators` list is the approved mechanism to grant the initial System Administrator role without manual DB edits. Empty by default; per-environment list recommended.
+- **Audit hooks**: authentication events are logged via Serilog with `AuditEvent` structured property. A dedicated immutable AuditLog store is deferred to the Audit module sprint; switching sinks does not affect callers of `IIdentityAuditLogger`.
+- **LDAP bind strategy**: service-account lookup followed by a second bind as the resolved user DN. Works cross-platform and avoids `DOMAIN\user` shortcuts that are not always available outside Windows.
+- **Directory attribute mapping is configurable**: defaults match standard AD schema but every attribute name is overridable through `Ldap:Attributes`.
 
 ### Risks / Notes
-- LDAP integration quality is critical
-- role and scope design must remain simple but extensible
+- Real LDAP validation in a production-like environment remains a pre-pilot activity. A containerised OpenLDAP or AD instance should be used for integration tests before Sprint 2 stabilises.
+- Without a running SQL Server, first request that touches Identity will fail. `IdentitySeeder` deliberately skips silently if the database is unreachable so Swagger and `/health` remain usable during local development.
+- Cookie `SecurePolicy` is `SameAsRequest` to match the Sprint 0 dev experience (HTTP). Production deployments should flip this to `Always`.
+- Blocking enforcement remains explicitly out of Phase 1 (BR-160, FR-170). Role gates only limit admin portal navigation; per-feature authorization is introduced alongside the feature modules in later sprints.
 
 ### Next Actions
-- confirm authentication flow design
-- implement user and access entities
-- connect login flow to app shell
+- Begin Sprint 2 (Policy Management)
+- Provide a concrete LDAP test environment / fixture for integration testing
+- Capture the first-administrator bootstrap convention in the deployment runbook
 
 ---
 
@@ -594,8 +631,8 @@ Use this checklist to assess whether the platform is ready for controlled launch
 
 | Item | Status | Notes |
 |------|--------|-------|
-| LDAP / AD authentication works | Not Started | |
-| User profiles are created and synced | Not Started | |
+| LDAP / AD authentication works | In Progress | Implemented in Sprint 1; pending validation against a real AD instance |
+| User profiles are created and synced | In Progress | Provisioning + on-login sync delivered in Sprint 1 |
 | Policies can be created and versioned | Not Started | |
 | Acknowledgments can be defined and published | Not Started | |
 | Form-based disclosures work | Not Started | |

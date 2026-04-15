@@ -1,14 +1,17 @@
 using System.Reflection;
 using Eap.Application.Common.Behaviors;
+using Eap.Application.Identity.Abstractions;
+using Eap.Application.Identity.Services;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Eap.Application;
 
 /// <summary>
 /// Registers Application-layer services: MediatR, FluentValidation, AutoMapper,
-/// and cross-cutting pipeline behaviors.
+/// cross-cutting pipeline behaviors, and per-feature application services.
 /// </summary>
 public static class DependencyInjection
 {
@@ -23,6 +26,10 @@ public static class DependencyInjection
         services.AddAutoMapper(cfg => cfg.AddMaps(assembly));
 
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+
+        // Application-layer services
+        services.AddScoped<IUserProvisioner, UserProvisioner>();
+        services.TryAddSingleton(TimeProvider.System);
 
         return services;
     }
