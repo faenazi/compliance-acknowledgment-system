@@ -1,90 +1,250 @@
 # Technical Preferences
 
-## Stack
+## 1. Purpose
 
-| Layer        | Technology                          |
-|--------------|-------------------------------------|
-| Backend      | ASP.NET Core (latest stable)        |
-| Frontend     | Next.js (latest stable, App Router) |
-| Styling      | Tailwind CSS                        |
-| Database     | SQL Server                          |
-| Language     | C# (backend), TypeScript (frontend) |
+This document defines the approved technology stack and technical direction for the Enterprise Acknowledgment Platform (EAP).
 
-## Backend Architecture
+It serves as the official reference for:
 
-- **Modular architecture** at the top level: each core domain (Policies, Acknowledgments, Compliance, Audit, Reporting) is an isolated module with its own folder, endpoints, domain models, and persistence.
-- **Vertical slice** inside each module: each feature (e.g., `PublishPolicyVersion`, `SubmitAcknowledgment`) is a self-contained slice with its request, handler, validator, and response types co-located.
-- Modules communicate through well-defined contracts, not by reaching into each other's internals.
-- Cross-cutting concerns (audit logging, authorization, validation) are implemented as pipeline behaviors / middleware, not duplicated per slice.
+- framework selection
+- package decisions
+- version constraints
+- development direction
+
+---
+
+## 2. Technical Direction
+
+The platform must be built as an internal enterprise web application with:
+
+- ASP.NET Core backend
+- Next.js frontend
+- SQL Server database
+- LDAP / Active Directory integration
+- Exchange integration
+- Arabic-first RTL-first UI
+
+The design goal is:
+
+- fast MVP delivery
+- controlled complexity
+- maintainable structure
+- future scalability
+
+---
+
+## 3. Approved Backend Stack
+
+### Framework
+- ASP.NET Core
+
+### Language
+- C#
+
+### Architecture
+- Modular Architecture
+- Vertical Slice Architecture
 
 ### API Style
+- RESTful APIs
+- JSON request/response contracts
 
-- HTTP + JSON. Minimal APIs or controllers are acceptable; pick one convention per module and stay consistent.
-- Endpoints are versioned under `/api/v1/...`.
-- Request/response DTOs are distinct from domain entities. Entities are never serialized directly.
+### Data Access
+- Entity Framework Core
+- SQL Server
 
-### Persistence
+### Core Backend Packages
+- MediatR
+- FluentValidation
+- AutoMapper
+- Swashbuckle.AspNetCore
+- Serilog.AspNetCore
+- Microsoft.EntityFrameworkCore
+- Microsoft.EntityFrameworkCore.SqlServer
+- Microsoft.EntityFrameworkCore.Design
+- HealthChecks packages as needed
 
-- Entity Framework Core against SQL Server.
-- Migrations are code-first and checked into the repository.
-- Each module owns its own `DbContext` partition or schema; shared tables are avoided.
-- No raw SQL for domain writes. Reporting queries may use SQL or Dapper for performance.
+### Backend Package Policy
+- use stable versions only
+- pin every package version in `.csproj`
+- do not use floating ranges
+- do not upgrade packages without approval
 
-### Validation and Errors
+---
 
-- FluentValidation or equivalent at the slice boundary.
-- Domain invariants are enforced in the domain layer, not the validator.
-- Errors returned as RFC 7807 Problem Details.
+## 4. Approved Frontend Stack
 
-## Frontend Architecture
+### Framework
+- Next.js
+- React
 
-- Next.js App Router, TypeScript strict mode.
-- Two separate route groups: `(user-portal)` and `(admin-portal)`. They do not share layouts or navigation.
-- Server components by default; client components only where interactivity requires it.
-- Data fetching via server components or a typed API client; no direct `fetch` calls scattered in leaf components.
-- State management kept local; global stores are introduced only when a concrete need exists.
+### Language
+- TypeScript
 
 ### Styling
+- Tailwind CSS
+- @tailwindcss/postcss
+- postcss
+- clsx
+- tailwind-merge
 
-- Tailwind CSS utility-first. No parallel CSS-in-JS system.
-- Arabic-first RTL: `dir="rtl"` is the default on the root layout; LTR is an explicit opt-in for English views.
-- Design tokens (colors, spacing, typography) defined in `tailwind.config` and referenced by name, never as arbitrary values in components.
+### Forms & Validation
+- react-hook-form
+- zod
 
-### Internationalization
+### Data Fetching
+- @tanstack/react-query
+- axios
 
-- Arabic is the default locale. English is secondary.
-- All user-facing strings go through the i18n layer — no hardcoded strings in components.
+### UI Utilities
+- lucide-react
 
-## Database Conventions
+### Frontend Package Policy
+- pin all versions in `package.json`
+- do not use `latest`
+- do not add alternative libraries for the same purpose without approval
 
-- Schema per module (e.g., `policies`, `acknowledgments`, `audit`).
-- Primary keys are `GUID` (sequential where supported) unless a specific reason exists to use `bigint`.
-- Every table has `CreatedAtUtc` and, where applicable, `CreatedBy`.
-- Append-only tables (`AuditLog`, `Acknowledgment`) have no update or delete triggers and no update paths in EF configuration.
-- Foreign keys are always enforced; cascading deletes are forbidden on audit and acknowledgment relationships.
+---
 
-## Security
+## 5. Authentication & Identity
 
-- Authentication against the organization's internal identity provider.
-- Authorization is role-based and checked server-side on every request.
-- All secrets come from configuration/secret store; none are committed.
-- HTTPS only. HSTS enabled in non-dev environments.
+### Authentication Source
+- LDAP / Active Directory
 
-## Observability
+### Identity Data
+AD is the source of truth for:
+- username
+- full name
+- email
+- department
+- job title
+- group memberships
 
-- Structured logging (Serilog or built-in `ILogger` with JSON formatter).
-- Correlation IDs flow from frontend requests through to backend logs and audit entries.
-- Audit logs are separate from operational logs and are not subject to log rotation.
+### Local Profile Strategy
+- create a local user profile on first successful login
+- refresh AD-derived attributes on login or scheduled sync
+- do not allow local overwrite of identity attributes sourced from AD
 
-## Testing
+---
 
-- Unit tests for domain logic and slice handlers.
-- Integration tests for each module against a real SQL Server (containerized).
-- Frontend component tests for critical user flows (acknowledgment submission, admin publishing).
-- No test uses production data.
+## 6. Email & Notification Technology
 
-## Tooling
+### Email Source
+- Microsoft Exchange
 
-- `.editorconfig` enforced; formatting is not a code review discussion.
-- CI runs build, tests, and migrations on every pull request.
-- Database migrations are applied automatically in non-production and gated manually in production.
+### Delivery Options
+- SMTP
+- service-based Exchange integration when needed
+
+### Rules
+- email failures must be logged
+- notification sending must support retries in application logic if required later
+
+---
+
+## 7. Data & Storage Strategy
+
+### Database
+- SQL Server is the primary transactional database
+
+### Versioned Entities
+The following entities are version-controlled:
+- Policy
+- Acknowledgment
+
+### File Storage
+Policy documents are stored as files, initially as uploaded PDFs.
+
+### Form-Based Acknowledgment Storage
+For form-based acknowledgments:
+- the form definition shall be stored at the acknowledgment version level
+- user submissions shall be stored against the user acknowledgment record
+- submitted data must remain historically traceable even if future versions are published later
+
+---
+
+## 8. Logging & Audit Strategy
+
+### Application Logging
+- use Serilog for structured logs
+- collect:
+  - errors
+  - warnings
+  - operational events
+  - integration failures
+
+### Audit Logging
+- maintain audit records separately from application logs
+- store audit records in the application database
+- treat audit records as immutable
+
+---
+
+## 9. UI Direction
+
+### Language
+- Arabic-first
+
+### Layout
+- RTL-first
+
+### UX Direction
+- simple and task-focused
+- minimal cognitive load
+- optimized for internal enterprise use
+- consistent behavior across User Portal and Admin Portal
+
+---
+
+## 10. Development Strategy
+
+### MVP First
+- implement only documented MVP requirements
+- avoid enforcement logic in Phase 1
+
+### Controlled Growth
+- architecture must support future additions
+- future phases may introduce:
+  - enforcement
+  - exceptions
+  - advanced rules
+  - advanced workflows
+
+### Simplicity Principle
+- choose the simplest solution that satisfies the requirement
+- do not add complexity early
+
+---
+
+## 11. Version Strategy
+
+### General Rules
+- use only stable versions
+- avoid preview and beta versions
+- keep versions explicit and pinned
+
+### Backend
+- all NuGet packages must be version-pinned in `.csproj`
+- no floating versions
+- upgrades require approval and compatibility review
+
+### Frontend
+- all npm packages must be version-pinned in `package.json`
+- no floating versions
+- upgrades require approval and compatibility review
+
+### AI Coding Constraint
+When generating code:
+- use only the approved stack
+- use only the approved versions
+- do not introduce additional packages
+- do not upgrade package versions automatically
+
+---
+
+## 12. Constraints
+
+- do not change the approved architecture
+- do not introduce new frameworks without approval
+- do not add package alternatives that duplicate existing responsibilities
+- keep the stack controlled and predictable
