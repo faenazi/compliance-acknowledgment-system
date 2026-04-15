@@ -2,12 +2,16 @@
 
 import type { ReactNode } from "react";
 import { QueryProvider } from "@/lib/query/QueryProvider";
+import { SessionProvider } from "@/lib/auth/SessionProvider";
 
 /**
  * Client-side providers that wrap the whole app.
- * Kept thin and composable — add providers here when introduced
- * (auth session, feature flags, i18n, etc.).
+ * Ordered so that React Query is available to the SessionProvider.
  */
 export function Providers({ children }: { children: ReactNode }) {
-  return <QueryProvider>{children}</QueryProvider>;
+  return (
+    <QueryProvider>
+      <SessionProvider>{children}</SessionProvider>
+    </QueryProvider>
+  );
 }

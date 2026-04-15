@@ -1,7 +1,10 @@
+using Eap.Api.Authentication;
 using Eap.Api.Extensions;
 using Eap.Api.Middleware;
 using Eap.Application;
+using Eap.Application.Identity.Abstractions;
 using Eap.Infrastructure;
+using Eap.Infrastructure.Identity.Seeding;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +18,13 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 // Services
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddHttpContextAccessor();
+
+// Authentication (cookie) + access context adapters.
+builder.Services.AddEapCookieAuthentication();
+builder.Services.AddScoped<ICurrentUser, CurrentUserService>();
+builder.Services.AddScoped<IAuthenticationSession, HttpAuthenticationSession>();
 
 builder.Services.AddControllers();
 builder.Services.AddEapSwagger();
@@ -36,6 +46,13 @@ builder.Services.AddCors(options =>
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
 var app = builder.Build();
+
+// Reference data seeding (idempotent).
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
+    await seeder.SeedAsync(CancellationToken.None);
+}
 
 // Pipeline
 app.UseSerilogRequestLogging();
