@@ -1,6 +1,9 @@
+using Eap.Application.Acknowledgments.Abstractions;
 using Eap.Application.Identity.Abstractions;
 using Eap.Application.Identity.Services;
 using Eap.Application.Policies.Abstractions;
+using Eap.Infrastructure.Acknowledgments.Audit;
+using Eap.Infrastructure.Acknowledgments.Persistence;
 using Eap.Infrastructure.Identity;
 using Eap.Infrastructure.Identity.Ldap;
 using Eap.Infrastructure.Identity.Persistence;
@@ -28,6 +31,7 @@ public static class DependencyInjection
         AddPersistence(services, configuration);
         AddIdentity(services, configuration);
         AddPolicyManagement(services, configuration);
+        AddAcknowledgmentManagement(services, configuration);
         return services;
     }
 
@@ -84,5 +88,11 @@ public static class DependencyInjection
         services.AddScoped<IPolicyRepository, PolicyRepository>();
         services.AddSingleton<IPolicyDocumentStorage, FileSystemPolicyDocumentStorage>();
         services.AddScoped<IPolicyAuditLogger, PolicyAuditLogger>();
+    }
+
+    private static void AddAcknowledgmentManagement(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddScoped<IAcknowledgmentRepository, AcknowledgmentRepository>();
+        services.AddScoped<IAcknowledgmentAuditLogger, AcknowledgmentAuditLogger>();
     }
 }

@@ -54,6 +54,29 @@ internal sealed class PolicyRepository : IPolicyRepository
         return query.AnyAsync(cancellationToken);
     }
 
+    public async Task<PolicyVersionLookup?> FindVersionLookupAsync(
+        Guid policyVersionId,
+        CancellationToken cancellationToken)
+    {
+        return await _db.PolicyVersions
+            .AsNoTracking()
+            .Where(v => v.Id == policyVersionId)
+            .Join(
+                _db.Policies.AsNoTracking(),
+                v => v.PolicyId,
+                p => p.Id,
+                (v, p) => new PolicyVersionLookup(
+                    v.Id,
+                    p.Id,
+                    p.PolicyCode,
+                    p.Title,
+                    v.VersionNumber,
+                    v.VersionLabel,
+                    v.Status))
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public async Task<int> GetMaxVersionNumberAsync(Guid policyId, CancellationToken cancellationToken)
     {
         // Returning int instead of int? — an empty set surfaces as 0 which is exactly

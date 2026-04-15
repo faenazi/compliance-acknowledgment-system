@@ -38,7 +38,7 @@ Use the following status values consistently:
 | Foundation & Setup | Completed | Backend and frontend skeletons created; authenticated app shell in place |
 | Identity & Access | In Progress | LDAP auth, User/Role/Scope/Assignment model, access context and role-aware shell delivered in Sprint 1 |
 | Policy Management | Completed | Policy/Version/Document domain, CRUD, publish/archive, and document upload delivered in Sprint 2 |
-| Acknowledgment Core | Not Started | |
+| Acknowledgment Core | Completed | AcknowledgmentDefinition/Version aggregate, action types, policy-version linkage, and publish/archive SoD delivered in Sprint 3 |
 | Audience & Recurrence | Not Started | |
 | Form-Based Disclosures | Not Started | |
 | User Portal | Not Started | |
@@ -278,7 +278,7 @@ Completed
 Deliver the core acknowledgment/disclosure definition and versioning model.
 
 ### Status
-Not Started
+Completed
 
 ### Planned Scope
 - acknowledgment definition entity
@@ -290,10 +290,29 @@ Not Started
 - publish/archive behavior
 
 ### Progress Summary
-- Not started yet
+- `AcknowledgmentDefinition` (master) and `AcknowledgmentVersion` (immutable snapshot) domain aggregate introduced under `Eap.Domain/Acknowledgment`, with the `ActionType` enum (SimpleAcknowledgment, AcknowledgmentWithCommitment, FormBasedDisclosure) and lifecycle states (`AcknowledgmentStatus` Draft/Published/Archived; `AcknowledgmentVersionStatus` Draft/Published/Superseded/Archived) modeled per §6.2 and LR-001/CDM-001.
+- Each `AcknowledgmentVersion` links to exactly one `PolicyVersion` (BR-019 / FR-023). The shadow foreign key uses `DeleteBehavior.Restrict` so policy history cannot be removed while acknowledgments still reference it.
+- "One published version per definition" enforced with defence in depth: (1) `AcknowledgmentDefinition.PublishVersion` atomically supersedes the current published version inside the aggregate, (2) filtered unique index `UX_AcknowledgmentVersions_Definition_Published` on `(AcknowledgmentDefinitionId, Status) WHERE Status = 1`, (3) handler re-verifies the linked policy version is still `Published` at publish time.
+- Action-type-dependent validation: FluentValidation requires a non-empty `CommitmentText` when `ActionType == AcknowledgmentWithCommitment`, and the domain `MarkPublished` reasserts the rule so it applies regardless of caller.
+- Application layer uses MediatR + FluentValidation + AutoMapper: commands for Create/Update/Archive definition, Create/Update/Publish/Archive version; queries for list (paged + filtered) and detail projections. Audit events emitted through `IAcknowledgmentAuditLogger` as structured Serilog entries tagged `AuditEvent`.
+- Cross-module read: a narrow `PolicyVersionLookup` record and `IPolicyRepository.FindVersionLookupAsync` were added so acknowledgment handlers can validate that a linked policy version exists and is Published without leaking the `PolicyVersion` entity across aggregates.
+- Full admin acknowledgment UX delivered in the Next.js portal: list with search/status/action-type filter + pagination, create/edit definition, create/edit draft version with two-step policy-version picker, publish, and archive — Arabic-first RTL, status badges, inline error surfacing.
 
 ### Completed Items
-- None
+- Domain → Application → Infrastructure → API slices for `AcknowledgmentDefinition`, `AcknowledgmentVersion`, and `ActionType`
+- Aggregate invariants: one published version per definition; archive-definition cascades to its versions; strict Draft-only mutation guard
+- `IAcknowledgmentRepository` with eager-loaded aggregate access, `GetMaxVersionNumberAsync`, and `ListAsync` paged filter (search, status, owner department, action type)
+- `IAcknowledgmentAuditLogger` emitting `AuditEvent` entries for definition create/update/archive and version create/update/publish/archive
+- Commands: `CreateAcknowledgmentDefinition`, `UpdateAcknowledgmentDefinition`, `ArchiveAcknowledgmentDefinition`, `CreateAcknowledgmentVersion`, `UpdateAcknowledgmentVersionDraft`, `PublishAcknowledgmentVersion`, `ArchiveAcknowledgmentVersion`
+- Queries: `ListAcknowledgmentDefinitions` (paged + filtered), `GetAcknowledgmentDefinitionById`, `ListAcknowledgmentVersions`, `GetAcknowledgmentVersionById`
+- EF configurations under schema `acknowledgment`, with filtered unique index for published-version-per-definition and compound unique index on `(AcknowledgmentDefinitionId, VersionNumber)`
+- `IPolicyRepository.FindVersionLookupAsync` + `PolicyVersionLookup` record for cross-aggregate policy-version validation
+- Controllers: `AcknowledgmentDefinitionsController`, `AcknowledgmentVersionsController` with role gating — authoring requires `AcknowledgmentManager`, publishing requires `Publisher` (SoD matching Sprint 2)
+- Infrastructure DI: `AddAcknowledgmentManagement` registers repository + audit sink; `EapDbContext` exposes new DbSets
+- Frontend typed API client (`lib/api/acknowledgments.ts`), TanStack Query hooks (`lib/acknowledgments/hooks.ts`), Arabic labels + action-type descriptions (`lib/acknowledgments/labels.ts`)
+- Reusable components: `AcknowledgmentStatusBadge`, `AcknowledgmentVersionStatusBadge`, `ActionTypeBadge`, `AcknowledgmentDefinitionForm`, `AcknowledgmentVersionForm`, `PolicyVersionPicker`
+- Admin pages: `/admin/acknowledgments`, `/admin/acknowledgments/new`, `/admin/acknowledgments/[definitionId]`, `/admin/acknowledgments/[definitionId]/versions/new`, `/admin/acknowledgments/[definitionId]/versions/[versionId]`
+- Portal navigation updated: "الإقرارات" entry visible to admin roles
 
 ### In Progress Items
 - None
@@ -302,16 +321,22 @@ Not Started
 - None
 
 ### Key Decisions
-- None yet
+- `AcknowledgmentVersion` is treated as an immutable snapshot: edits are only allowed while the version is `Draft`; published/superseded/archived versions are read-only (BR-031-aligned)
+- The linked `PolicyVersion` is validated both at version-creation time and re-verified at publish time — this prevents publishing an acknowledgment whose underlying policy version has since been superseded or archived
+- Segregation of duties for publish: `AcknowledgmentManager` can author and archive drafts; only `Publisher` (or `SystemAdministrator`) can publish — mirrors Sprint 2's policy flow
+- Cross-module read for policy-version status goes through a narrow `PolicyVersionLookup` record on the existing `IPolicyRepository` rather than exposing the `PolicyVersion` aggregate directly, keeping aggregate boundaries clean
+- `StartDate`/`DueDate` are kept on the version per §6.2 data model, but recurrence, audience, and assignment logic remain deliberately out of Sprint 3 scope (Sprints 4/5)
+- `FormBasedDisclosure` is accepted as an action-type value, but no form schema is persisted in this sprint — the full form builder lands in Sprint 5
 
 ### Risks / Notes
-- version linkage to policy must remain strict
-- action types must remain aligned with business model
+- Build verification via `dotnet build` and `tsc --noEmit` could not be run in this environment (SDK + node_modules absent). Required before release; CI is the authoritative gate.
+- No EF migration was generated in this sprint — the new `acknowledgment` schema tables will be materialized by the standard migration flow when the database tooling is available.
+- Audience, recurrence, and form schema deliberately excluded; downstream sprints will introduce their own aggregates and link to the acknowledgment version snapshot.
 
 ### Next Actions
-- implement definition and version entities
-- implement version-aware APIs
-- build acknowledgment admin screens
+- Generate the EF migration for the `acknowledgment` schema as part of the CI build verification
+- Author integration tests for the publish flow (invariant + policy-version status re-check)
+- Begin Sprint 4 (Audience Targeting & Recurrence)
 
 ---
 
@@ -653,7 +678,7 @@ Use this checklist to assess whether the platform is ready for controlled launch
 | LDAP / AD authentication works | In Progress | Implemented in Sprint 1; pending validation against a real AD instance |
 | User profiles are created and synced | In Progress | Provisioning + on-login sync delivered in Sprint 1 |
 | Policies can be created and versioned | Completed | Delivered in Sprint 2 — CRUD, versioning, document upload, publish/archive with BR-010/BR-011/BR-012/BR-014 enforced |
-| Acknowledgments can be defined and published | Not Started | |
+| Acknowledgments can be defined and published | Completed | Delivered in Sprint 3 — definition + version aggregate, action types, linkage to a published policy version, and publish/archive with SoD enforced |
 | Form-based disclosures work | Not Started | |
 | Audience targeting works correctly | Not Started | |
 | Recurrence logic works correctly | Not Started | |

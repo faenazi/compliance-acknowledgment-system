@@ -1,3 +1,4 @@
+using Eap.Domain.Acknowledgment;
 using Eap.Domain.Identity;
 using Eap.Domain.Policy;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +26,10 @@ public class EapDbContext : DbContext
     public DbSet<Policy> Policies => Set<Policy>();
     public DbSet<PolicyVersion> PolicyVersions => Set<PolicyVersion>();
     public DbSet<PolicyDocument> PolicyDocuments => Set<PolicyDocument>();
+
+    // Acknowledgment management (Sprint 3)
+    public DbSet<AcknowledgmentDefinition> AcknowledgmentDefinitions => Set<AcknowledgmentDefinition>();
+    public DbSet<AcknowledgmentVersion> AcknowledgmentVersions => Set<AcknowledgmentVersion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
