@@ -1,4 +1,5 @@
 using Eap.Domain.Identity;
+using Eap.Domain.Policy;
 using Microsoft.EntityFrameworkCore;
 
 namespace Eap.Infrastructure.Persistence;
@@ -19,6 +20,11 @@ public class EapDbContext : DbContext
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Scope> Scopes => Set<Scope>();
     public DbSet<UserRoleAssignment> UserRoleAssignments => Set<UserRoleAssignment>();
+
+    // Policy management (Sprint 2)
+    public DbSet<Policy> Policies => Set<Policy>();
+    public DbSet<PolicyVersion> PolicyVersions => Set<PolicyVersion>();
+    public DbSet<PolicyDocument> PolicyDocuments => Set<PolicyDocument>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

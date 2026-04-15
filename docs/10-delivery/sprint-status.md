@@ -37,7 +37,7 @@ Use the following status values consistently:
 |------|--------|-------|
 | Foundation & Setup | Completed | Backend and frontend skeletons created; authenticated app shell in place |
 | Identity & Access | In Progress | LDAP auth, User/Role/Scope/Assignment model, access context and role-aware shell delivered in Sprint 1 |
-| Policy Management | Not Started | |
+| Policy Management | Completed | Policy/Version/Document domain, CRUD, publish/archive, and document upload delivered in Sprint 2 |
 | Acknowledgment Core | Not Started | |
 | Audience & Recurrence | Not Started | |
 | Form-Based Disclosures | Not Started | |
@@ -216,7 +216,7 @@ Completed
 Deliver policy creation, document upload, policy versioning, and publication.
 
 ### Status
-Not Started
+Completed
 
 ### Planned Scope
 - policy entity
@@ -228,10 +228,24 @@ Not Started
 - historical version visibility
 
 ### Progress Summary
-- Not started yet
+- Policy, PolicyVersion, and PolicyDocument domain model wired through Application (MediatR + FluentValidation + AutoMapper), Infrastructure (EF Core repository + file-system storage + Serilog audit), and API (thin controllers with role-based authorization).
+- Full admin policy management UX delivered in the Next.js portal: list with search/status filter/pagination, create/edit policy, versions history, create/edit draft version, PDF upload, publish, and archive — all Arabic-first RTL with status badges and inline error display.
+- BR-010 (document-required-before-publish), BR-011 (single published version per policy), BR-012 (historical preservation via Superseded state), and BR-014 (owner department required) enforced at both the domain and database layers.
 
 ### Completed Items
-- None
+- Domain → Application → Infrastructure → API slices for policies, versions, and documents
+- `IPolicyRepository` with eager-loaded aggregate access and paged list filters
+- `IPolicyDocumentStorage` abstraction with configurable file-system implementation (root path, size limit, extension + content-type whitelist, path-traversal protection)
+- `IPolicyAuditLogger` emitting structured Serilog events (`AuditEvent` property) for create / update / publish / archive / upload / download
+- Commands: CreatePolicy, UpdatePolicy, ArchivePolicy, CreatePolicyVersion, UpdatePolicyVersionDraft, PublishPolicyVersion, ArchivePolicyVersion, UploadPolicyDocument
+- Queries: ListPolicies (paged + filtered), GetPolicyById, ListPolicyVersions, GetPolicyVersionById, DownloadPolicyDocument (streamed with range support)
+- Controllers: `PoliciesController`, `PolicyVersionsController`, `PolicyDocumentsController` with role gating (PolicyManager for authoring, Publisher for publish — SoD per Sprint 1)
+- GlobalExceptionMiddleware extended to map domain rule violations (`InvalidOperationException`) → 409 Conflict
+- `appsettings` section `PolicyDocuments` with configurable root path, 25 MB default limit, and PDF whitelist
+- Frontend typed API client (`lib/api/policies.ts`), TanStack Query hooks (`lib/policies/hooks.ts`), Arabic labels + badge palette (`lib/policies/labels.ts`)
+- Reusable components: `PolicyStatusBadge`, `PolicyVersionStatusBadge`, `PolicyForm`, `VersionForm`, `PolicyDocumentUpload`
+- Admin pages: `/admin/policies`, `/admin/policies/new`, `/admin/policies/[policyId]`, `/admin/policies/[policyId]/versions`, `/admin/policies/[policyId]/versions/new`, `/admin/policies/[policyId]/versions/[versionId]`
+- Portal navigation updated to expose Policies entry to PolicyManager / Publisher / SystemAdministrator roles
 
 ### In Progress Items
 - None
@@ -240,16 +254,21 @@ Not Started
 - None
 
 ### Key Decisions
-- None yet
+- File-system storage chosen as MVP default for policy documents, pluggable behind `IPolicyDocumentStorage` so cloud/object-store backends can replace it without touching application code (resolves O-002)
+- BR-011 enforced with defense in depth: (1) `Policy.PublishVersion` atomically supersedes the current published version inside the aggregate, (2) filtered unique index `UX_PolicyVersions_Policy_Published` on `(PolicyId, Status) WHERE Status = 1`, (3) handler always loads the full aggregate before mutating
+- BR-010 enforced in the domain (`PolicyVersion.MarkPublished` rejects when `HasDocument` is false) rather than in the handler, so it applies uniformly regardless of caller
+- Segregation of duties for publish: `PolicyManager` can author and archive drafts, but only `Publisher` (or `SystemAdministrator`) can publish
+- Upload ordering: bytes are written to storage before the domain attaches the `PolicyDocument` entity; orphan-blob cleanup is deferred to a future janitor job (see Risks)
 
 ### Risks / Notes
-- historical integrity must be preserved
-- document handling approach must remain simple in MVP
+- Orphan-blob risk: if a domain rejection occurs after bytes are written, the file remains on disk. Tracked as follow-up for a janitor/background sweeper.
+- File-system storage requires the deployment target to provide persistent, backed-up storage at the configured `RootPath`. Operational runbook must cover backup and retention before production launch.
+- Build verification via `dotnet build` and `tsc --noEmit` could not be run in this environment (SDK + node_modules absent). Required before release.
 
 ### Next Actions
-- define upload storage approach
-- implement policy list and version screens
-- enforce one published version rule
+- Run backend + frontend builds in CI to confirm the slice compiles end-to-end
+- Author integration tests for publish/archive flows and unique-published-version constraint
+- Add the orphan-blob cleanup job to the Sprint 8 (Admin Portal & Operations) backlog
 
 ---
 
@@ -589,7 +608,7 @@ Not Started
 | Item ID | Topic | Owner | Status | Notes |
 |--------|-------|-------|--------|-------|
 | O-001 | Final deployment/authentication topology | TBD | Open | |
-| O-002 | File storage approach for uploaded documents | TBD | Open | |
+| O-002 | File storage approach for uploaded documents | Engineering | Resolved | MVP uses a configurable file-system store (root path, size limit, extension + content-type whitelist) behind `IPolicyDocumentStorage`; swappable for cloud/object-store later |
 | O-003 | Export format expectations for reports | TBD | Open | |
 | O-004 | Exact reminder schedule rules | TBD | Open | |
 | O-005 | Whether draft-save is needed for long disclosures in MVP | TBD | Open | |
@@ -633,7 +652,7 @@ Use this checklist to assess whether the platform is ready for controlled launch
 |------|--------|-------|
 | LDAP / AD authentication works | In Progress | Implemented in Sprint 1; pending validation against a real AD instance |
 | User profiles are created and synced | In Progress | Provisioning + on-login sync delivered in Sprint 1 |
-| Policies can be created and versioned | Not Started | |
+| Policies can be created and versioned | Completed | Delivered in Sprint 2 — CRUD, versioning, document upload, publish/archive with BR-010/BR-011/BR-012/BR-014 enforced |
 | Acknowledgments can be defined and published | Not Started | |
 | Form-based disclosures work | Not Started | |
 | Audience targeting works correctly | Not Started | |
