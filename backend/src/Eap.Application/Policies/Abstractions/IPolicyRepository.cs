@@ -16,6 +16,13 @@ public interface IPolicyRepository
 
     Task<bool> CodeExistsAsync(string policyCode, Guid? excludingPolicyId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Lightweight cross-module lookup of a single policy version. Used by the
+    /// acknowledgment module to validate the linked policy version (LR-001)
+    /// without loading the full Policy aggregate.
+    /// </summary>
+    Task<PolicyVersionLookup?> FindVersionLookupAsync(Guid policyVersionId, CancellationToken cancellationToken);
+
     /// <summary>Highest version number ever used for a given policy; 0 when none exist yet.</summary>
     Task<int> GetMaxVersionNumberAsync(Guid policyId, CancellationToken cancellationToken);
 
@@ -36,3 +43,16 @@ public sealed record PolicyListFilter(
     PolicyStatus? Status,
     string? OwnerDepartment,
     string? Category);
+
+/// <summary>
+/// Minimal projection of a policy version used for cross-module validation
+/// (e.g. acknowledgment version → policy version linkage).
+/// </summary>
+public sealed record PolicyVersionLookup(
+    Guid Id,
+    Guid PolicyId,
+    string PolicyCode,
+    string PolicyTitle,
+    int VersionNumber,
+    string? VersionLabel,
+    PolicyVersionStatus Status);

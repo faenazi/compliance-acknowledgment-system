@@ -62,5 +62,6 @@ export const USER_PORTAL_NAV: readonly NavItem[] = [
 export const ADMIN_PORTAL_NAV: readonly NavItem[] = [
   { href: "/admin/dashboard", label: "لوحة الإدارة", requireRoles: ADMIN_ROLES },
   { href: "/admin/policies", label: "السياسات", requireRoles: ADMIN_ROLES },
+  { href: "/admin/acknowledgments", label: "الإقرارات", requireRoles: ADMIN_ROLES },
   { href: "/dashboard", label: "بوابة الموظف" },
 ];
