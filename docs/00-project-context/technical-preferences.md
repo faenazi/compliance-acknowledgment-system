@@ -36,7 +36,7 @@ The design goal is:
 ## 3. Approved Backend Stack
 
 ### Framework
-- ASP.NET Core
+- ASP.NET Core 10
 
 ### Language
 - C#
@@ -54,15 +54,16 @@ The design goal is:
 - SQL Server
 
 ### Core Backend Packages
-- MediatR
-- FluentValidation
-- AutoMapper
-- Swashbuckle.AspNetCore
-- Serilog.AspNetCore
-- Microsoft.EntityFrameworkCore
-- Microsoft.EntityFrameworkCore.SqlServer
-- Microsoft.EntityFrameworkCore.Design
-- HealthChecks packages as needed
+- MediatR 14.1.0
+- FluentValidation 12.1.1
+- AutoMapper 16.1.1
+- Swashbuckle.AspNetCore 10.1.7
+- Serilog.AspNetCore 10.0.0
+
+### Optional Backend Package Family
+- Microsoft.EntityFrameworkCore 10.x
+- Microsoft.EntityFrameworkCore.SqlServer 10.x
+- Microsoft.EntityFrameworkCore.Design 10.x
 
 ### Backend Package Policy
 - use stable versions only
@@ -75,29 +76,30 @@ The design goal is:
 ## 4. Approved Frontend Stack
 
 ### Framework
-- Next.js
-- React
+- Next.js 16.2.3
+- React 19.2.5
+- React DOM 19.2.5
 
 ### Language
-- TypeScript
+- TypeScript 6.0.2
 
 ### Styling
-- Tailwind CSS
-- @tailwindcss/postcss
-- postcss
-- clsx
-- tailwind-merge
+- Tailwind CSS 4.2.2
+- @tailwindcss/postcss 4.2.2
+- PostCSS 8.5.9
+- clsx 2.1.1
+- tailwind-merge 3.5.0
 
 ### Forms & Validation
-- react-hook-form
-- zod
+- react-hook-form 7.72.1
+- zod 4.3.6
 
 ### Data Fetching
-- @tanstack/react-query
-- axios
+- @tanstack/react-query 5.97.0
+- axios 1.15.0
 
 ### UI Utilities
-- lucide-react
+- lucide-react 1.8.0
 
 ### Frontend Package Policy
 - pin all versions in `package.json`
@@ -153,7 +155,7 @@ The following entities are version-controlled:
 - Acknowledgment
 
 ### File Storage
-Policy documents are stored as files, initially as uploaded PDFs.
+Policy documents are stored as files, initially as uploaded PDFs
 
 ### Form-Based Acknowledgment Storage
 For form-based acknowledgments:
@@ -248,3 +250,37 @@ When generating code:
 - do not introduce new frameworks without approval
 - do not add package alternatives that duplicate existing responsibilities
 - keep the stack controlled and predictable
+
+---
+
+## 13. Approved Versions
+
+### Backend
+- ASP.NET Core 10
+- MediatR 14.1.0
+- FluentValidation 12.1.1
+- AutoMapper 16.1.1
+- Swashbuckle.AspNetCore 10.1.7
+- Serilog.AspNetCore 10.0.0
+
+### Frontend
+- Next.js 16.2.3
+- React 19.2.5
+- React DOM 19.2.5
+- TypeScript 6.0.2
+- Tailwind CSS 4.2.2
+- @tailwindcss/postcss 4.2.2
+- PostCSS 8.5.9
+- react-hook-form 7.72.1
+- zod 4.3.6
+- @tanstack/react-query 5.97.0
+- axios 1.15.0
+- clsx 2.1.1
+- tailwind-merge 3.5.0
+- lucide-react 1.8.0
+
+### Version Policy
+- use stable versions only
+- pin all versions explicitly
+- do not use preview, beta, or floating versions
+- do not upgrade versions without explicit approval
