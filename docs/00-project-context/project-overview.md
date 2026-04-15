@@ -1,66 +1,183 @@
 # Project Overview
 
-## System Name
+---
 
-Enterprise Acknowledgment Platform (EAP)
+# 1. Introduction
 
-## Owner
+The **Enterprise Acknowledgment Platform (EAP)** is an internal system for **The Environment Fund** designed to manage policies and user acknowledgments in a centralized, structured, and auditable way.
 
-The Environment Fund — Internal Compliance Function.
+The platform enables the organization to ensure that employees are aware of policies and formally acknowledge them, while providing visibility into compliance status across departments.
 
-## Purpose
+---
 
-EAP is an internal compliance platform that governs the full lifecycle of organizational policies and the acknowledgment of those policies by employees. It provides a single source of truth for what each employee is required to read, what they have acknowledged, and when — backed by an immutable audit trail sufficient for internal and external audit review.
+# 2. Problem Statement
 
-## Problem It Solves
+Currently, policy acknowledgment processes are:
 
-The Environment Fund currently distributes policies through email, shared drives, and manual tracking sheets. This produces three failures:
+- Manual or semi-manual
+- Not centrally tracked
+- Difficult to audit
+- Lacking real-time visibility
+- Dependent on email or external tools
 
-1. No reliable record of who has read which version of a policy.
-2. No enforcement that acknowledgments are tied to a specific, unmodified version.
-3. No defensible audit trail when regulators or internal audit request evidence.
+This creates risks in:
+- Compliance tracking
+- Audit readiness
+- Policy enforcement
+- Organizational accountability
 
-EAP replaces these manual processes with a controlled, versioned, auditable system.
+---
 
-## Core Domains (Phase 1)
+# 3. Solution Overview
 
-1. **Policies** — authoring, categorization, and ownership of compliance documents.
-2. **Versioning** — every policy change produces a new immutable version; published versions cannot be altered.
-3. **Acknowledgments** — employee confirmation that a specific policy version has been read and accepted.
-4. **User Compliance** — per-user status showing which required acknowledgments are complete, pending, or overdue.
-5. **Audit Logs** — append-only record of every state-changing action in the system.
-6. **Reporting** — compliance posture across the organization, by policy, department, and user.
+The EAP platform provides:
 
-## Primary Actors
+- Centralized policy management
+- Structured acknowledgment workflows
+- User-level tracking of acknowledgments
+- Organizational compliance visibility
+- Integration with Active Directory for user data
+- Email notification capabilities
 
-- **Employee (User)** — receives assigned policies, reads them, submits acknowledgments, views personal compliance status.
-- **Compliance Administrator** — authors policies, publishes versions, assigns audiences, monitors compliance, exports reports.
-- **Auditor (read-only)** — reviews audit logs and compliance reports; cannot modify data.
+---
 
-## Portals
+# 4. Objectives
 
-- **User Portal** — full-featured employee experience: assigned policies, reading, acknowledgment submission, personal compliance history.
-- **Admin Portal** — lean operational console for compliance administrators: policy authoring, version publishing, audience assignment, reporting, audit log inspection.
+The system aims to:
 
-## Language and Direction
+- Ensure all users are aware of relevant policies
+- Track acknowledgment completion across the organization
+- Provide real-time compliance visibility
+- Enable audit-ready records
+- Reduce manual effort in policy tracking
 
-Arabic-first, right-to-left (RTL) as the default UI direction. English is a secondary language.
+---
 
-## Phase 1 Scope
+# 5. Scope (MVP - Phase 1)
 
-In scope:
+The initial version of the system includes:
 
-- Policy authoring and versioning
-- Publishing workflow (draft → published)
-- Acknowledgment capture bound to a specific version
-- Per-user compliance status
-- Audit logging of all state changes
-- Administrative reporting and export
+## Included
 
-Out of scope for Phase 1:
+- User authentication via LDAP / Active Directory
+- Policy upload and version management
+- Acknowledgment creation and publishing
+- Basic audience targeting (department / AD groups / all users)
+- User portal for viewing and completing acknowledgments
+- Compliance tracking (Pending / Completed / Overdue)
+- Email notifications via Exchange
+- Basic reporting
+- Audit logging
 
-- E-signature integrations
-- Automated training/quiz modules
-- External (non-employee) acknowledgments
-- Mobile native apps
-- Third-party identity federation beyond the organization's internal directory
+---
+
+## Excluded (Deferred)
+
+- Blocking / enforcement logic
+- Exception and defer management
+- Advanced rules engine
+- Approval workflows
+- Dynamic forms
+- Mobile applications
+- eSignature
+- Advanced analytics
+
+---
+
+# 6. Core Modules
+
+The system consists of the following modules:
+
+## 6.1 Identity & User Management
+- LDAP / Active Directory authentication
+- User profile creation and synchronization
+
+## 6.2 Policy Management
+- Policy creation
+- Document upload
+- Version control
+
+## 6.3 Acknowledgment Management
+- Create and publish acknowledgments
+- Link acknowledgments to policies
+
+## 6.4 Audience Targeting
+- Assign acknowledgments to users based on:
+  - Department
+  - AD Groups
+  - All users
+
+## 6.5 User Portal
+- Dashboard
+- View acknowledgments
+- Submit acknowledgment
+- View history
+
+## 6.6 Compliance Tracking
+- Track acknowledgment status per user
+- Calculate compliance metrics
+
+## 6.7 Notification System
+- Email notifications via Exchange
+
+## 6.8 Audit Logging
+- Track key system actions
+
+---
+
+# 7. Users & Roles
+
+## End User
+- View assigned acknowledgments
+- Complete acknowledgments
+- View history
+
+## Content Manager
+- Create policies
+- Upload documents
+
+## Publisher
+- Publish policies and acknowledgments
+
+## Compliance Viewer
+- View reports and compliance data
+
+## Administrator
+- Manage system configuration
+- Manage users and access
+
+---
+
+# 8. Key Concepts
+
+| Concept | Description |
+|--------|------------|
+| Policy | Official document requiring acknowledgment |
+| Policy Version | Specific version of a policy document |
+| Acknowledgment | User agreement to a policy |
+| User Acknowledgment | Record of user action |
+| Compliance | User completion status |
+| Audit Log | Record of system actions |
+
+---
+
+# 9. System Principles
+
+- All acknowledgments must be linked to a policy version
+- Published content cannot be modified
+- All actions must be logged
+- System must be simple and fast for MVP
+- No enforcement logic in Phase 1
+- System must be expandable in future phases
+
+---
+
+# 10. Success Criteria
+
+The system is considered successful if:
+
+- Users can easily view and complete acknowledgments
+- Management can track compliance in real-time
+- Reports accurately reflect user status
+- Notifications are delivered successfully
+- System is audit-ready
