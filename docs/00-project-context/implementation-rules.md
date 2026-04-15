@@ -1,57 +1,353 @@
 # Implementation Rules
 
-These rules are non-negotiable. Any implementation that violates them must be rejected, regardless of convenience.
+---
 
-## Versioning Rules
+# 1. Purpose
 
-1. Every policy has one or more versions. A policy without at least one version is invalid.
-2. A version is in exactly one state: `Draft`, `Published`, or `Archived`.
-3. Once a version transitions to `Published`, its content, metadata, and effective date are **immutable**. No update, patch, or "silent fix" is permitted.
-4. Corrections to published content are made by creating a new version. The previous version is archived, not deleted.
-5. Archived versions remain readable forever for audit purposes.
+This document defines the **mandatory implementation rules** for building the Enterprise Acknowledgment Platform (EAP).
 
-## Acknowledgment Rules
+All developers and AI coding assistants MUST follow these rules to ensure:
 
-1. Every acknowledgment **must** reference a specific `PolicyVersion.Id`. Acknowledgments against a policy without a version are invalid and must be rejected at the domain layer.
-2. An acknowledgment is immutable once recorded. It cannot be edited or deleted — only superseded by a newer acknowledgment against a newer version.
-3. When a new version of a policy is published, prior acknowledgments do **not** carry over. Users must re-acknowledge the new version.
-4. The acknowledgment record must capture, at minimum: user ID, policy version ID, UTC timestamp, and source IP / user agent.
+- consistency
+- maintainability
+- scalability
+- correctness
 
-## Publishing Rules
+---
 
-1. Published content cannot be modified. This applies to policy body, title, category, and any embedded assets referenced by the version.
-2. Only Compliance Administrators may publish. The act of publishing is itself an audited event.
-3. A draft may be edited freely; a published version may not.
-4. Unpublishing is not supported. A published version is either superseded (new version published) or archived.
+# 2. Architecture Principles
 
-## Audit Logging Rules
+## 2.1 Architecture Style
 
-1. Every state-changing action produces exactly one audit log entry. No action is exempt.
-2. Audit entries are append-only. There is no update or delete path, at any layer, for any reason.
-3. Each entry records: actor (user ID), action type, target entity type and ID, UTC timestamp, and a structured payload of before/after values where applicable.
-4. Read-only actions are not audited unless they involve sensitive exports (e.g., compliance reports); those exports are audited.
-5. Audit log storage must be separable from operational data so it can be retained independently.
+The system MUST follow:
 
-## Authorization Rules
+- Modular Architecture
+- Vertical Slice Architecture (feature-based)
 
-1. Role-based: `Employee`, `ComplianceAdministrator`, `Auditor`. No implicit permissions.
-2. Employees can only read their own acknowledgments and assigned policies.
-3. Auditors are strictly read-only across all data.
-4. No endpoint may infer permissions from client-supplied role claims without server-side verification.
+---
 
-## Portal Rules
+## 2.2 Separation of Concerns
 
-1. The User Portal must be full-featured: listing assigned policies, reading them, acknowledging, and viewing personal history must all be first-class flows.
-2. The Admin Portal must remain lean. It implements only what compliance operations require; it is not a general-purpose CMS.
-3. The two portals share the same backend but must not share UI navigation, layout, or access surfaces.
+The system MUST be structured into:
 
-## Data Integrity Rules
+- Presentation Layer (API / UI)
+- Application Layer (Use Cases)
+- Domain Layer (Business Logic)
+- Infrastructure Layer (Database, LDAP, Email)
 
-1. Referential integrity between `Acknowledgment → PolicyVersion → Policy` must be enforced at the database level, not only in application code.
-2. Soft-deletes are not permitted for `Policy`, `PolicyVersion`, `Acknowledgment`, or `AuditLog`. Hard deletes are also not permitted for these entities in production.
-3. All timestamps are stored in UTC. Display-time localization is a UI concern.
+---
 
-## Change Control
+## 2.3 Feature-Based Structure
 
-1. Any schema change affecting `Policy`, `PolicyVersion`, `Acknowledgment`, or `AuditLog` requires an explicit migration and is itself an auditable event in the deployment record.
-2. No direct database writes to these tables outside of the application's domain services.
+Each feature MUST be self-contained.
+
+Each feature SHOULD include:
+
+- Endpoint / Controller
+- Request / Response models
+- Handler (Use Case)
+- Validation
+- Data access
+
+---
+
+# 3. Backend Rules (.NET)
+
+## 3.1 API Design
+
+- Use RESTful APIs
+- Use DTOs for all requests and responses
+- Do NOT expose database entities directly
+
+---
+
+## 3.2 Request Handling
+
+- Use MediatR for all commands and queries
+- Each feature MUST follow:
+  - Command / Query
+  - Handler
+
+---
+
+## 3.3 Validation
+
+- Use FluentValidation
+- Validation MUST be separate from controllers
+- All inputs MUST be validated
+
+---
+
+## 3.4 Mapping Strategy
+
+- Prefer manual mapping for critical domain logic
+- Use AutoMapper ONLY for simple DTO mapping
+- Do NOT hide business logic inside mapping profiles
+
+---
+
+## 3.5 Business Logic
+
+- MUST NOT exist in controllers
+- MUST be inside application/domain layers
+
+---
+
+## 3.6 Error Handling
+
+- Use centralized error handling
+- Return standardized error responses
+- Do NOT expose internal exceptions
+
+---
+
+## 3.7 Logging
+
+- Use Serilog for structured logging
+- Log:
+  - Errors
+  - Important actions
+  - Integration failures
+
+---
+
+# 4. Data & Database Rules
+
+## 4.1 Database
+
+- SQL Server MUST be used
+- Entity Framework Core MUST be used
+
+---
+
+## 4.2 Data Integrity
+
+- Enforce referential integrity
+- Prevent duplicate records
+
+---
+
+## 4.3 Versioning
+
+- Only ONE active version per entity
+- Historical versions MUST be preserved
+- Published data MUST NOT be modified
+
+---
+
+## 4.4 Audit Logging
+
+- All critical actions MUST be logged
+- Audit data MUST be immutable
+
+---
+
+# 5. Integration Rules
+
+## 5.1 LDAP / Active Directory
+
+- Authentication MUST be via LDAP / AD
+- AD is the source of truth
+- User data MUST be retrieved from AD
+
+---
+
+## 5.2 Exchange (Email)
+
+- Email MUST be sent via Exchange
+- Use SMTP or service integration
+- Failures MUST be logged
+
+---
+
+# 6. Security Rules
+
+## 6.1 Authentication
+
+- All users MUST authenticate via LDAP / AD
+
+---
+
+## 6.2 Authorization
+
+- Use Role-Based Access Control (RBAC)
+
+---
+
+## 6.3 Data Protection
+
+- Do NOT expose sensitive data
+- Secure all endpoints
+
+---
+
+# 7. Frontend Rules (Next.js)
+
+## 7.1 Structure
+
+- Use modular structure
+- Separate:
+  - pages
+  - components
+  - services
+
+---
+
+## 7.2 API Layer
+
+- All API calls MUST go through a centralized service layer
+
+---
+
+## 7.3 Forms
+
+- Use React Hook Form
+- Use Zod for validation
+
+---
+
+## 7.4 UI Consistency
+
+- Follow RTL (Arabic-first)
+- Use consistent components
+
+---
+
+# 8. Simplicity Rules (MVP Critical)
+
+## 8.1 No Overengineering
+
+- Do NOT introduce unnecessary abstractions
+- Do NOT build future features
+
+---
+
+## 8.2 MVP First
+
+- Build only required features
+- Follow requirements strictly
+
+---
+
+## 8.3 Keep It Simple
+
+- Prefer simple solutions
+- Optimize later
+
+---
+
+# 9. Performance Guidelines
+
+- Avoid unnecessary DB calls
+- Use pagination
+- Optimize queries
+
+---
+
+# 10. Coding Standards
+
+- Use clean naming conventions
+- Avoid duplication
+- Write readable code
+
+---
+
+# 11. AI Coding Rules
+
+- Do NOT invent architecture
+- Do NOT introduce new libraries
+- Follow requirements strictly
+- Follow this document exactly
+
+---
+
+# 12. Non-Negotiable Rules
+
+- No business logic in controllers
+- No direct DB access from frontend
+- No modification of published data
+- No skipping validation
+- No skipping audit logging
+
+---
+
+# 13. Backend Libraries (Approved)
+
+The backend MUST use the following libraries:
+
+## Core Libraries
+
+- MediatR
+- FluentValidation
+- AutoMapper
+- Swashbuckle (Swagger)
+- Serilog
+- Entity Framework Core
+
+---
+
+## Rules
+
+- Do NOT introduce additional libraries without approval
+- Do NOT use multiple libraries for the same purpose
+- Keep dependencies minimal
+
+---
+
+# 14. Frontend Libraries (Approved)
+
+The frontend MUST use the following libraries:
+
+---
+
+## Core
+
+- next
+- react
+- react-dom
+- typescript
+
+---
+
+## Styling
+
+- tailwindcss
+- postcss
+- autoprefixer
+- clsx
+- tailwind-merge
+
+---
+
+## Forms & Validation
+
+- react-hook-form
+- zod
+
+---
+
+## Data Fetching
+
+- @tanstack/react-query
+- axios
+
+---
+
+## UI Utilities
+
+- lucide-react
+
+---
+
+## Optional (If Needed)
+
+- @tanstack/react-table
+- react-hot-toast
+
+---
+
+## Rules
+
+- Do NOT add UI frameworks
+- Do NOT mix multiple form libraries
+- Keep dependencies minimal
