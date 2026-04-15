@@ -1,3 +1,4 @@
+using Eap.Domain.Audience;
 using Eap.Domain.Common;
 
 namespace Eap.Domain.Acknowledgment;
@@ -8,8 +9,8 @@ namespace Eap.Domain.Acknowledgment;
 /// docs/03-functional-requirements/lifecycle-models.md §4.2).
 ///
 /// Each version is linked to exactly one <c>PolicyVersion</c> (LR-001/CDM-001).
-/// Recurrence and audience are intentionally deferred to Sprint 4 and are NOT
-/// modelled here.
+/// Sprint 4 adds the recurrence model (BR-040) and the 0..1 <see cref="AudienceDefinition"/>
+/// navigation (BR-050). Audience rules themselves live on the audience aggregate.
 /// </summary>
 public sealed class AcknowledgmentVersion : AuditableEntity
 {
@@ -21,6 +22,7 @@ public sealed class AcknowledgmentVersion : AuditableEntity
         int versionNumber,
         Guid policyVersionId,
         ActionType actionType,
+        RecurrenceModel recurrenceModel,
         string? versionLabel,
         string? summary,
         string? commitmentText,
@@ -53,6 +55,7 @@ public sealed class AcknowledgmentVersion : AuditableEntity
         VersionNumber = versionNumber;
         PolicyVersionId = policyVersionId;
         ActionType = actionType;
+        RecurrenceModel = recurrenceModel;
         VersionLabel = versionLabel?.Trim();
         Summary = summary?.Trim();
         CommitmentText = commitmentText?.Trim();
@@ -72,6 +75,11 @@ public sealed class AcknowledgmentVersion : AuditableEntity
 
     public ActionType ActionType { get; private set; }
 
+    /// <summary>Recurrence cadence for this version (BR-040 / BR-046).
+    /// Remains <see cref="RecurrenceModel.Unspecified"/> while a draft is being
+    /// authored; publishing is blocked until an explicit model is set (BR-033).</summary>
+    public RecurrenceModel RecurrenceModel { get; private set; }
+
     public string? Summary { get; private set; }
 
     /// <summary>Free-text commitment shown to the user when
@@ -83,6 +91,10 @@ public sealed class AcknowledgmentVersion : AuditableEntity
     public DateOnly? DueDate { get; private set; }
 
     public AcknowledgmentVersionStatus Status { get; private set; }
+
+    /// <summary>0..1 <see cref="AudienceDefinition"/> owned by this version
+    /// (BR-032). Populated by configuring audience rules on a draft version.</summary>
+    public AudienceDefinition? Audience { get; private set; }
 
     public DateTimeOffset? PublishedAtUtc { get; private set; }
 
@@ -98,6 +110,7 @@ public sealed class AcknowledgmentVersion : AuditableEntity
     public void UpdateDraftMetadata(
         Guid policyVersionId,
         ActionType actionType,
+        RecurrenceModel recurrenceModel,
         string? versionLabel,
         string? summary,
         string? commitmentText,
@@ -118,6 +131,7 @@ public sealed class AcknowledgmentVersion : AuditableEntity
 
         PolicyVersionId = policyVersionId;
         ActionType = actionType;
+        RecurrenceModel = recurrenceModel;
         VersionLabel = versionLabel?.Trim();
         Summary = summary?.Trim();
         CommitmentText = commitmentText?.Trim();
@@ -125,6 +139,39 @@ public sealed class AcknowledgmentVersion : AuditableEntity
         DueDate = dueDate;
         UpdatedAtUtc = DateTimeOffset.UtcNow;
         UpdatedBy = updatedBy?.Trim();
+    }
+
+    /// <summary>Explicitly sets the recurrence model on a draft (BR-046). Kept
+    /// separate so the Recurrence Configuration admin page can update this
+    /// field without re-posting every version metadata field.</summary>
+    public void SetRecurrence(
+        RecurrenceModel recurrenceModel,
+        DateOnly? startDate,
+        DateOnly? dueDate,
+        string? updatedBy)
+    {
+        EnsureDraft("configure recurrence on");
+
+        ValidateDateWindow(startDate, dueDate);
+
+        RecurrenceModel = recurrenceModel;
+        StartDate = startDate;
+        DueDate = dueDate;
+        UpdatedAtUtc = DateTimeOffset.UtcNow;
+        UpdatedBy = updatedBy?.Trim();
+    }
+
+    /// <summary>Attaches (or replaces) the audience definition for a draft (BR-050).</summary>
+    public AudienceDefinition ConfigureAudience(string? configuredBy)
+    {
+        EnsureDraft("configure audience on");
+
+        if (Audience is null)
+        {
+            Audience = new AudienceDefinition(Id, configuredBy);
+        }
+
+        return Audience;
     }
 
     /// <summary>Publishes the version. Callers enforce the "one published version per
@@ -137,6 +184,19 @@ public sealed class AcknowledgmentVersion : AuditableEntity
         {
             throw new InvalidOperationException(
                 "Cannot publish an 'Acknowledgment with Commitment' version without commitment text.");
+        }
+
+        // BR-032 / BR-033 — audience and recurrence must be defined before publish.
+        if (RecurrenceModel == RecurrenceModel.Unspecified)
+        {
+            throw new InvalidOperationException(
+                "Cannot publish: the recurrence model must be configured first (BR-033).");
+        }
+
+        if (Audience is null || !Audience.HasAnyInclusionRule)
+        {
+            throw new InvalidOperationException(
+                "Cannot publish: the target audience must be defined first (BR-032).");
         }
 
         Status = AcknowledgmentVersionStatus.Published;

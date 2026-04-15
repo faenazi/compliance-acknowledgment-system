@@ -10,6 +10,19 @@ export enum ActionType {
   FormBasedDisclosure = 2,
 }
 
+/**
+ * Mirrors Eap.Domain.Acknowledgment.RecurrenceModel. Publishing is blocked
+ * while the model is Unspecified (BR-033).
+ */
+export enum RecurrenceModel {
+  Unspecified = 0,
+  OnboardingOnly = 1,
+  Annual = 2,
+  OnboardingAndAnnual = 3,
+  OnChange = 4,
+  EventDriven = 5,
+}
+
 export enum AcknowledgmentStatus {
   Draft = 0,
   Published = 1,
@@ -30,6 +43,7 @@ export interface AcknowledgmentVersionSummary {
   versionLabel: string | null;
   policyVersionId: string;
   actionType: ActionType;
+  recurrenceModel: RecurrenceModel;
   status: AcknowledgmentVersionStatus;
   startDate: string | null;
   dueDate: string | null;
@@ -44,6 +58,7 @@ export interface AcknowledgmentVersionDetail {
   versionLabel: string | null;
   policyVersionId: string;
   actionType: ActionType;
+  recurrenceModel: RecurrenceModel;
   summary: string | null;
   commitmentText: string | null;
   startDate: string | null;
@@ -109,6 +124,7 @@ export type UpdateAcknowledgmentDefinitionInput = CreateAcknowledgmentDefinition
 export interface CreateAcknowledgmentVersionInput {
   policyVersionId: string;
   actionType: ActionType;
+  recurrenceModel: RecurrenceModel;
   versionLabel?: string | null;
   summary?: string | null;
   commitmentText?: string | null;
@@ -117,3 +133,10 @@ export interface CreateAcknowledgmentVersionInput {
 }
 
 export type UpdateAcknowledgmentVersionDraftInput = CreateAcknowledgmentVersionInput;
+
+/** Payload for PUT /versions/:id/recurrence (BR-046). */
+export interface SetRecurrenceInput {
+  recurrenceModel: RecurrenceModel;
+  startDate?: string | null;
+  dueDate?: string | null;
+}

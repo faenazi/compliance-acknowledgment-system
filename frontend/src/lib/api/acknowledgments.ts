@@ -8,6 +8,7 @@ import type {
   AcknowledgmentVersionSummary,
   CreateAcknowledgmentDefinitionInput,
   CreateAcknowledgmentVersionInput,
+  SetRecurrenceInput,
   UpdateAcknowledgmentDefinitionInput,
   UpdateAcknowledgmentVersionDraftInput,
 } from "@/lib/acknowledgments/types";
@@ -104,6 +105,18 @@ export async function updateAcknowledgmentVersionDraft(
 ): Promise<AcknowledgmentVersionDetail> {
   const { data } = await apiClient.put<AcknowledgmentVersionDetail>(
     `/api/acknowledgments/${definitionId}/versions/${versionId}`,
+    input,
+  );
+  return data;
+}
+
+export async function setAcknowledgmentVersionRecurrence(
+  definitionId: string,
+  versionId: string,
+  input: SetRecurrenceInput,
+): Promise<AcknowledgmentVersionDetail> {
+  const { data } = await apiClient.put<AcknowledgmentVersionDetail>(
+    `/api/acknowledgments/${definitionId}/versions/${versionId}/recurrence`,
     input,
   );
   return data;

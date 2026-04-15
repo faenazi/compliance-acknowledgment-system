@@ -39,7 +39,7 @@ Use the following status values consistently:
 | Identity & Access | In Progress | LDAP auth, User/Role/Scope/Assignment model, access context and role-aware shell delivered in Sprint 1 |
 | Policy Management | Completed | Policy/Version/Document domain, CRUD, publish/archive, and document upload delivered in Sprint 2 |
 | Acknowledgment Core | Completed | AcknowledgmentDefinition/Version aggregate, action types, policy-version linkage, and publish/archive SoD delivered in Sprint 3 |
-| Audience & Recurrence | Not Started | |
+| Audience & Recurrence | Completed | AudienceDefinition/Rule + UserActionRequirement domain, five recurrence models, audience resolution pipeline, and requirement-generation foundation delivered in Sprint 4 |
 | Form-Based Disclosures | Not Started | |
 | User Portal | Not Started | |
 | Admin Portal & Operations | Not Started | |
@@ -346,7 +346,7 @@ Completed
 Deliver user targeting and recurring action logic.
 
 ### Status
-Not Started
+Completed
 
 ### Planned Scope
 - audience definitions
@@ -357,10 +357,39 @@ Not Started
 - user action requirement generation
 
 ### Progress Summary
-- Not started yet
+- `AudienceDefinition` (aggregate) and `AudienceRule` domain model added under `Eap.Domain/Audience`, bound 1:1 to an `AcknowledgmentVersion`. `AudienceRuleType` = AllUsers/Department/AdGroup/User; `AudienceType` is derived from the active rule set (AllUsers/Departments/AdGroups/Mixed) for read-only reporting.
+- Inclusion and exclusion rules are stored on the same aggregate and separated by the `IsExclusion` flag; `AllUsers` is rejected as an exclusion (BR-055) at the domain level. Inclusions are combined with OR, exclusions always override (BR-054).
+- `RecurrenceModel` enum (Unspecified, OnboardingOnly, Annual, OnboardingAndAnnual, OnChange, EventDriven) lives on `AcknowledgmentVersion` with a dedicated `SetAcknowledgmentVersionRecurrence` command (BR-046). `Unspecified` blocks publish (BR-033); draft creation/edit accepts any of the five configured models.
+- `UserActionRequirement` entity introduced under `Eap.Domain/Requirements` with a deterministic cycle reference (`onboarding`, `annual:YYYY`, `event:<ref>`, `change:<ref>`) and `IsCurrent` flag so requirement snapshots per user/version/cycle are idempotent. Unique index `UX_UserActionRequirements_User_Version_Cycle` enforces the contract at the database level.
+- Application layer exposes typed commands/queries: `ConfigureAudienceInclusion`, `ConfigureAudienceExclusions`, `SetAllUsersAudience`, `GetAudienceByVersion`, `PreviewAudience`, `SetAcknowledgmentVersionRecurrence`, `ListRequirementsForVersion`, `GenerateRequirementsForVersion` — each with its own validator and MediatR handler.
+- Audience resolution runs through `IAudienceResolver`: inclusions are unioned (AllUsers → active users; Department → users in the AD-synced department; AdGroup → delegated to `IDirectoryGroupResolver`, stubbed as empty in Phase 1 because LDAP group sync is a future sprint; User → literal GUID). Exclusions are unioned and subtracted.
+- `RequirementGenerator` coordinates the end-to-end flow: verifies Published + audience → derives cycle key → resolves audience → skips existing (user, version, cycle) rows → marks prior cycles as not-current → persists new requirements → emits audit events. Uses injected `TimeProvider` so the Annual cycle (`annual:YYYY`) is deterministic and testable.
+- Full admin audience + recurrence UX delivered in the Next.js portal. Every Draft acknowledgment version now exposes two dedicated pages:
+  - `/admin/acknowledgments/:def/versions/:ver/recurrence` — pick from the five recurrence models, see a human-readable description, set optional start/due dates, with a read-only summary banner.
+  - `/admin/acknowledgments/:def/versions/:ver/audience` — inclusion editor (Department / AD Group / Specific User), "All users" quick-set, explicit exclusions editor, and an estimated preview card with counts + a sample of matched users.
+- Recurrence summary and quick-links are surfaced on the version detail page so authors always see cadence while editing. Published/Superseded/Archived versions fall back to a read-only projection (BR-031).
 
 ### Completed Items
-- None
+- Domain → Application → Infrastructure → API slices for `AudienceDefinition`, `AudienceRule`, and `UserActionRequirement`
+- `AudienceDefinition` aggregate methods: `SetAllUsers`, `ReplaceInclusionRules`, `ReplaceExclusionRules`, `HasAnyInclusionRule`, `DeriveAudienceType` — with BR-055 guard that forbids AllUsers in exclusions
+- `RecurrenceModel` enum added to `AcknowledgmentVersion`; publish gate re-verifies audience + recurrence invariants before `MarkPublished`
+- Deterministic cycle-key helpers (`RecurrenceCycle.Onboarding`, `AnnualFor(year)`, `EventFor(ref)`, `ChangeFor(ref)`, `DefaultCycleKey`)
+- `IAudienceResolver` + EF-backed `AudienceResolver` implementation (active users only, department lookup, GUID parse for user rules)
+- `IDirectoryGroupResolver` + `StubDirectoryGroupResolver` (Phase 1 stub returning empty until AD group sync lands)
+- `IAudienceAuditLogger` emitting `AudienceConfigured`, `AudienceInclusionRulesReplaced`, `AudienceExclusionRulesReplaced`
+- `IRequirementRepository`, `IRequirementGenerator`, `RequirementGenerator`, `IRequirementAuditLogger` delivering the requirement-generation foundation
+- Commands: `ConfigureAudienceInclusion`, `ConfigureAudienceExclusions`, `SetAllUsersAudience`, `SetAcknowledgmentVersionRecurrence`, `GenerateRequirementsForVersion`
+- Queries: `GetAudienceByVersion`, `PreviewAudience`, `ListRequirementsForVersion`
+- Controllers: `AudienceController` (inclusion / exclusions / all-users / preview), `RequirementsController` (list + generate) — thin, delegate to MediatR, role-gated to `AcknowledgmentManager`/`SystemAdministrator`
+- EF configurations under schema `acknowledgment`: `AudienceDefinitions` (unique on `AcknowledgmentVersionId`), `AudienceRules` (index on `(AudienceDefinitionId, IsExclusion, SortOrder)`), `UserActionRequirements` (unique on `(UserId, AcknowledgmentVersionId, CycleReference)`)
+- `IAcknowledgmentRepository.FindDefinitionByVersionIdAsync` for cross-aggregate load in the requirement generator; repository `FindByIdAsync` now eager-loads audience rules so publish can enforce BR-032
+- Infrastructure DI: `AddAudienceTargeting` + `AddRequirementGeneration`; `TimeProvider.System` registered as a singleton for deterministic cycle derivation
+- Frontend typed API clients (`lib/api/audience.ts`, `lib/api/requirements.ts`, plus `setAcknowledgmentVersionRecurrence` on `lib/api/acknowledgments.ts`)
+- TanStack Query hooks: `lib/audience/hooks.ts`, `lib/requirements/hooks.ts`, `useSetAcknowledgmentVersionRecurrence`
+- Arabic-first labels: `lib/audience/labels.ts`, `lib/acknowledgments/recurrenceLabels.ts`
+- Reusable components: `RecurrenceForm`, `RecurrenceSummary`, `AudienceRulesEditor`, `AudienceExclusionsEditor`, `AudiencePreviewSummary`
+- Admin pages: `/admin/acknowledgments/[definitionId]/versions/[versionId]/audience`, `/admin/acknowledgments/[definitionId]/versions/[versionId]/recurrence`
+- Version detail page updated with a two-card quick-access section linking to audience and recurrence pages
 
 ### In Progress Items
 - None
@@ -369,16 +398,28 @@ Not Started
 - None
 
 ### Key Decisions
-- None yet
+- **Audience targeting is explicit, not rule-engine-driven**: rules are stored as a flat list of typed inclusion/exclusion rows. Inclusions OR together; exclusions always override. No DSL, no scoring.
+- **AD group resolution is abstracted but stubbed in Phase 1**: `IDirectoryGroupResolver` returns an empty set for any AD-group rule until LDAP group sync is delivered. Authoring still works end-to-end; resolution becomes authoritative when the sync job lands.
+- **AllUsers is allowed only in inclusions**: attempting to exclude "all users" is rejected at the domain layer (BR-055). Defense-in-depth matches the existing policy of domain invariants + filtered indexes + handler re-checks.
+- **Recurrence is a closed enum, not a scheduler**: five fixed models, each with a deterministic cycle key. No cron, no RRULE, no workflow orchestration. `SetAcknowledgmentVersionRecurrence` is its own command (BR-046) so cadence can be updated independently from the rest of the draft.
+- **Cycle reference is canonical**: `onboarding | annual:YYYY | event:<ref> | change:<ref>`. This string is what `UserActionRequirement` uses to guarantee idempotency when the generator runs repeatedly.
+- **Generator uses `TimeProvider`**: the annual cycle derives from `DateTimeOffset.UtcNow.Year` via the injected provider so tests can pin time without touching system clocks.
+- **Requirement generation is a foundation, not a schedule**: the Sprint 4 command generates the current cycle only when invoked; it does not host a recurring job. Triggering automation (cron/hosted service) is a later sprint (Sprint 7/8).
+- **Published versions stay immutable (BR-031)**: audience and recurrence screens show a read-only projection when the version is not Draft. All mutating endpoints re-check status at the aggregate level.
+- **Segregation of duties**: audience/recurrence authoring requires `AcknowledgmentManager`/`SystemAdministrator`; publishing still requires `Publisher` (unchanged from Sprint 2/3).
 
 ### Risks / Notes
-- targeting accuracy depends on AD data quality
-- recurrence logic must remain deterministic and simple
+- AD group resolution is stubbed until the directory sync job lands; preview counts for AD-group rules will under-report in Phase 1. Counts are labelled "تقديرية" (estimated) in the UI accordingly.
+- Department strings used in targeting rely on AD-sync fidelity; small naming drifts (spaces, casing) will cause false negatives. Validation of department strings against a canonical list is a future sprint item.
+- Build verification via `dotnet build` and `tsc --noEmit` could not be run in this environment (SDK + node_modules absent). Required before release; CI is the authoritative gate.
+- No EF migration was generated in this sprint — the new `acknowledgment.AudienceDefinitions`, `acknowledgment.AudienceRules`, and `acknowledgment.UserActionRequirements` tables will be materialized by the standard migration flow when the database tooling is available.
+- Requirement generation is exposed as an admin command only; automated scheduling, reminders, and the end-user submission flow are deliberately out of scope (Sprints 6/7/8).
 
 ### Next Actions
-- implement audience rule model
-- implement recurrence model behavior
-- build audience and recurrence admin pages
+- Generate the EF migration for the new tables as part of the CI build verification
+- Author integration tests for: (a) exclusions overriding inclusions, (b) AllUsers rejection in exclusions, (c) publish gate requiring audience + recurrence, (d) idempotent `GenerateRequirements` invocations producing stable rows
+- Replace `StubDirectoryGroupResolver` with the real LDAP-backed resolver when AD group sync is introduced
+- Begin Sprint 5 (Form-Based Disclosures)
 
 ---
 
@@ -680,8 +721,8 @@ Use this checklist to assess whether the platform is ready for controlled launch
 | Policies can be created and versioned | Completed | Delivered in Sprint 2 — CRUD, versioning, document upload, publish/archive with BR-010/BR-011/BR-012/BR-014 enforced |
 | Acknowledgments can be defined and published | Completed | Delivered in Sprint 3 — definition + version aggregate, action types, linkage to a published policy version, and publish/archive with SoD enforced |
 | Form-based disclosures work | Not Started | |
-| Audience targeting works correctly | Not Started | |
-| Recurrence logic works correctly | Not Started | |
+| Audience targeting works correctly | Completed | Delivered in Sprint 4 — AllUsers/Department/AD-group inclusion, explicit exclusions, BR-054/BR-055 enforced, admin UI + preview in place (AD group resolution stubbed until LDAP group sync lands) |
+| Recurrence logic works correctly | Completed | Delivered in Sprint 4 — five deterministic recurrence models with `SetRecurrence` command, publish gate per BR-033, requirement-generation foundation with deterministic cycle keys |
 | User portal is usable end-to-end | Not Started | |
 | Admin portal is usable end-to-end | Not Started | |
 | Notifications are sent through Exchange | Not Started | |

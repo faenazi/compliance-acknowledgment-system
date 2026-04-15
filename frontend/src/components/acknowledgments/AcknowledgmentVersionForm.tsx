@@ -11,7 +11,12 @@ import {
   collectFieldErrors,
 } from "@/lib/acknowledgments/labels";
 import {
+  recurrenceModelDescription,
+  recurrenceModelLabel,
+} from "@/lib/acknowledgments/recurrenceLabels";
+import {
   ActionType,
+  RecurrenceModel,
   type AcknowledgmentVersionDetail,
   type CreateAcknowledgmentVersionInput,
   type UpdateAcknowledgmentVersionDraftInput,
@@ -24,6 +29,7 @@ const schema = z
   .object({
     policyVersionId: z.string().uuid("يجب اختيار نسخة سياسة منشورة"),
     actionType: z.coerce.number().int().min(0).max(2),
+    recurrenceModel: z.coerce.number().int().min(0).max(5),
     versionLabel: z.string().trim().max(128).optional().or(z.literal("")),
     summary: z.string().trim().max(4000).optional().or(z.literal("")),
     commitmentText: z.string().trim().max(4000).optional().or(z.literal("")),
@@ -98,6 +104,7 @@ export function AcknowledgmentVersionForm({
     defaultValues: {
       policyVersionId: initialValue?.policyVersionId ?? "",
       actionType: initialValue?.actionType ?? defaultActionType,
+      recurrenceModel: initialValue?.recurrenceModel ?? RecurrenceModel.Unspecified,
       versionLabel: initialValue?.versionLabel ?? "",
       summary: initialValue?.summary ?? "",
       commitmentText: initialValue?.commitmentText ?? "",
@@ -107,6 +114,7 @@ export function AcknowledgmentVersionForm({
   });
 
   const selectedActionType = Number(watch("actionType")) as ActionType;
+  const selectedRecurrenceModel = Number(watch("recurrenceModel")) as RecurrenceModel;
 
   const submit = handleSubmit(async (values) => {
     setSubmissionError(null);
@@ -127,6 +135,7 @@ export function AcknowledgmentVersionForm({
       await onSubmit({
         policyVersionId: parsed.data.policyVersionId,
         actionType: parsed.data.actionType as ActionType,
+        recurrenceModel: parsed.data.recurrenceModel as RecurrenceModel,
         versionLabel: parsed.data.versionLabel?.trim() || null,
         summary: parsed.data.summary?.trim() || null,
         commitmentText:
@@ -218,6 +227,44 @@ export function AcknowledgmentVersionForm({
           {fieldErrors.versionLabel ? (
             <p role="alert" className="text-xs text-red-700">
               {fieldErrors.versionLabel}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-1.5 md:col-span-2">
+          <label htmlFor="recurrenceModel" className="block text-sm font-medium">
+            نموذج التكرار
+          </label>
+          <select
+            id="recurrenceModel"
+            className="block h-11 w-full rounded-[10px] border border-[var(--color-border-strong)] bg-white px-3 text-sm outline-none transition-colors focus:border-[var(--color-brand-primary)]"
+            {...register("recurrenceModel")}
+          >
+            <option value={RecurrenceModel.Unspecified}>
+              {recurrenceModelLabel(RecurrenceModel.Unspecified)}
+            </option>
+            <option value={RecurrenceModel.OnboardingOnly}>
+              {recurrenceModelLabel(RecurrenceModel.OnboardingOnly)}
+            </option>
+            <option value={RecurrenceModel.Annual}>
+              {recurrenceModelLabel(RecurrenceModel.Annual)}
+            </option>
+            <option value={RecurrenceModel.OnboardingAndAnnual}>
+              {recurrenceModelLabel(RecurrenceModel.OnboardingAndAnnual)}
+            </option>
+            <option value={RecurrenceModel.OnChange}>
+              {recurrenceModelLabel(RecurrenceModel.OnChange)}
+            </option>
+            <option value={RecurrenceModel.EventDriven}>
+              {recurrenceModelLabel(RecurrenceModel.EventDriven)}
+            </option>
+          </select>
+          <p className="text-xs text-[var(--color-text-tertiary)]">
+            {recurrenceModelDescription(selectedRecurrenceModel)}
+          </p>
+          {fieldErrors.recurrenceModel ? (
+            <p role="alert" className="text-xs text-red-700">
+              {fieldErrors.recurrenceModel}
             </p>
           ) : null}
         </div>

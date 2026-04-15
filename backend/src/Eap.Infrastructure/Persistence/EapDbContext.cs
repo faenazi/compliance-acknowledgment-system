@@ -1,6 +1,8 @@
 using Eap.Domain.Acknowledgment;
+using Eap.Domain.Audience;
 using Eap.Domain.Identity;
 using Eap.Domain.Policy;
+using Eap.Domain.Requirements;
 using Microsoft.EntityFrameworkCore;
 
 namespace Eap.Infrastructure.Persistence;
@@ -30,6 +32,11 @@ public class EapDbContext : DbContext
     // Acknowledgment management (Sprint 3)
     public DbSet<AcknowledgmentDefinition> AcknowledgmentDefinitions => Set<AcknowledgmentDefinition>();
     public DbSet<AcknowledgmentVersion> AcknowledgmentVersions => Set<AcknowledgmentVersion>();
+
+    // Audience targeting & requirements (Sprint 4)
+    public DbSet<AudienceDefinition> AudienceDefinitions => Set<AudienceDefinition>();
+    public DbSet<AudienceRule> AudienceRules => Set<AudienceRule>();
+    public DbSet<UserActionRequirement> UserActionRequirements => Set<UserActionRequirement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

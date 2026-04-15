@@ -9,6 +9,7 @@ public sealed record CreateAcknowledgmentVersionCommand(
     Guid DefinitionId,
     Guid PolicyVersionId,
     ActionType ActionType,
+    RecurrenceModel RecurrenceModel,
     string? VersionLabel,
     string? Summary,
     string? CommitmentText,

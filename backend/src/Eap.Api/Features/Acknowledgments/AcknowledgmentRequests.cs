@@ -42,6 +42,9 @@ public sealed class CreateAcknowledgmentVersionRequest
     [Required]
     public ActionType ActionType { get; set; }
 
+    /// <summary>Recurrence cadence — may be left as <c>Unspecified</c> while drafting (BR-040).</summary>
+    public RecurrenceModel RecurrenceModel { get; set; } = RecurrenceModel.Unspecified;
+
     public string? VersionLabel { get; set; }
 
     public string? Summary { get; set; }
@@ -62,11 +65,24 @@ public sealed class UpdateAcknowledgmentVersionDraftRequest
     [Required]
     public ActionType ActionType { get; set; }
 
+    public RecurrenceModel RecurrenceModel { get; set; } = RecurrenceModel.Unspecified;
+
     public string? VersionLabel { get; set; }
 
     public string? Summary { get; set; }
 
     public string? CommitmentText { get; set; }
+
+    public DateOnly? StartDate { get; set; }
+
+    public DateOnly? DueDate { get; set; }
+}
+
+/// <summary>API contract for setting the recurrence on a draft version (BR-046).</summary>
+public sealed class SetAcknowledgmentVersionRecurrenceRequest
+{
+    [Required]
+    public RecurrenceModel RecurrenceModel { get; set; }
 
     public DateOnly? StartDate { get; set; }
 

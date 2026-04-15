@@ -11,6 +11,9 @@ public interface IAcknowledgmentRepository
 {
     Task<AcknowledgmentDefinition?> FindByIdAsync(Guid definitionId, CancellationToken cancellationToken);
 
+    /// <summary>Loads the parent definition (with its versions and audiences) for a given version id.</summary>
+    Task<AcknowledgmentDefinition?> FindDefinitionByVersionIdAsync(Guid versionId, CancellationToken cancellationToken);
+
     /// <summary>Highest version number ever used for the given definition; 0 when none exist yet.</summary>
     Task<int> GetMaxVersionNumberAsync(Guid definitionId, CancellationToken cancellationToken);
 

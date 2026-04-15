@@ -1,9 +1,14 @@
 using Eap.Application.Acknowledgments.Abstractions;
+using Eap.Application.Audience.Abstractions;
 using Eap.Application.Identity.Abstractions;
 using Eap.Application.Identity.Services;
 using Eap.Application.Policies.Abstractions;
+using Eap.Application.Requirements.Abstractions;
+using Eap.Application.Requirements.Services;
 using Eap.Infrastructure.Acknowledgments.Audit;
 using Eap.Infrastructure.Acknowledgments.Persistence;
+using Eap.Infrastructure.Audience.Audit;
+using Eap.Infrastructure.Audience.Resolution;
 using Eap.Infrastructure.Identity;
 using Eap.Infrastructure.Identity.Ldap;
 using Eap.Infrastructure.Identity.Persistence;
@@ -12,9 +17,12 @@ using Eap.Infrastructure.Persistence;
 using Eap.Infrastructure.Policies.Audit;
 using Eap.Infrastructure.Policies.Documents;
 using Eap.Infrastructure.Policies.Persistence;
+using Eap.Infrastructure.Requirements.Audit;
+using Eap.Infrastructure.Requirements.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Eap.Infrastructure;
 
@@ -32,6 +40,8 @@ public static class DependencyInjection
         AddIdentity(services, configuration);
         AddPolicyManagement(services, configuration);
         AddAcknowledgmentManagement(services, configuration);
+        AddAudienceTargeting(services, configuration);
+        AddRequirementGeneration(services, configuration);
         return services;
     }
 
@@ -94,5 +104,23 @@ public static class DependencyInjection
     {
         services.AddScoped<IAcknowledgmentRepository, AcknowledgmentRepository>();
         services.AddScoped<IAcknowledgmentAuditLogger, AcknowledgmentAuditLogger>();
+    }
+
+    private static void AddAudienceTargeting(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddScoped<IAudienceResolver, AudienceResolver>();
+        services.AddScoped<IDirectoryGroupResolver, StubDirectoryGroupResolver>();
+        services.AddScoped<IAudienceAuditLogger, AudienceAuditLogger>();
+    }
+
+    private static void AddRequirementGeneration(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddScoped<IRequirementRepository, RequirementRepository>();
+        services.AddScoped<IRequirementAuditLogger, RequirementAuditLogger>();
+        services.AddScoped<IRequirementGenerator, RequirementGenerator>();
+
+        // TimeProvider powers deterministic cycle-key derivation; System default is
+        // adequate — tests swap in a FakeTimeProvider.
+        services.TryAddSingleton(TimeProvider.System);
     }
 }
