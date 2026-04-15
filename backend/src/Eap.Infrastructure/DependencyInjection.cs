@@ -1,10 +1,14 @@
 using Eap.Application.Identity.Abstractions;
 using Eap.Application.Identity.Services;
+using Eap.Application.Policies.Abstractions;
 using Eap.Infrastructure.Identity;
 using Eap.Infrastructure.Identity.Ldap;
 using Eap.Infrastructure.Identity.Persistence;
 using Eap.Infrastructure.Identity.Seeding;
 using Eap.Infrastructure.Persistence;
+using Eap.Infrastructure.Policies.Audit;
+using Eap.Infrastructure.Policies.Documents;
+using Eap.Infrastructure.Policies.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +27,7 @@ public static class DependencyInjection
     {
         AddPersistence(services, configuration);
         AddIdentity(services, configuration);
+        AddPolicyManagement(services, configuration);
         return services;
     }
 
@@ -67,5 +72,17 @@ public static class DependencyInjection
 
         // Seeder
         services.AddScoped<IdentitySeeder>();
+    }
+
+    private static void AddPolicyManagement(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<PolicyDocumentStorageOptions>()
+            .Bind(configuration.GetSection(PolicyDocumentStorageOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddScoped<IPolicyRepository, PolicyRepository>();
+        services.AddSingleton<IPolicyDocumentStorage, FileSystemPolicyDocumentStorage>();
+        services.AddScoped<IPolicyAuditLogger, PolicyAuditLogger>();
     }
 }

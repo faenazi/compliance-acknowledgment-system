@@ -48,6 +48,13 @@ public sealed class GlobalExceptionMiddleware
                 ((int)HttpStatusCode.Forbidden, "Access forbidden.", (IDictionary<string, string[]>?)null),
             UnauthorizedAccessException =>
                 ((int)HttpStatusCode.Unauthorized, "Authentication required.", (IDictionary<string, string[]>?)null),
+            // Domain rule violations (e.g. cannot publish without a document, cannot
+            // edit a published version) arrive as InvalidOperationException from the
+            // aggregate — surface them as 409 Conflict instead of 500.
+            InvalidOperationException =>
+                ((int)HttpStatusCode.Conflict, "Operation not allowed by business rules.", (IDictionary<string, string[]>?)null),
+            ArgumentException =>
+                ((int)HttpStatusCode.BadRequest, "Invalid request.", (IDictionary<string, string[]>?)null),
             _ =>
                 ((int)HttpStatusCode.InternalServerError, "An unexpected error occurred.", (IDictionary<string, string[]>?)null)
         };
