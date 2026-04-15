@@ -35,7 +35,7 @@ Use the following status values consistently:
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Foundation & Setup | Not Started | |
+| Foundation & Setup | In Progress | Backend and frontend skeletons created; no business features yet |
 | Identity & Access | Not Started | |
 | Policy Management | Not Started | |
 | Acknowledgment Core | Not Started | |
@@ -54,7 +54,7 @@ Use the following status values consistently:
 Establish the technical and UI foundation of the platform.
 
 ### Status
-Not Started
+In Progress
 
 ### Planned Scope
 - ASP.NET Core solution structure
@@ -78,10 +78,33 @@ Not Started
 - shared base UI components
 
 ### Progress Summary
-- Not started yet
+- Backend solution skeleton created under `backend/` with Modular + Vertical Slice layering (`Eap.Api`, `Eap.Application`, `Eap.Domain`, `Eap.Infrastructure`, plus `Eap.Modules/` placeholder for per-feature modules added in later sprints).
+- MediatR 14.1.0, FluentValidation 12.1.1, AutoMapper 16.1.1, Serilog.AspNetCore 10.0.0, Swashbuckle.AspNetCore 10.1.7, and EF Core 10.0.0 (SQL Server) wired in with pinned versions; `ValidationBehavior` registered in the MediatR pipeline.
+- Centralized `GlobalExceptionMiddleware` and standardized `ApiError` response contract established; `/health` endpoint added; Swagger UI enabled in Development only.
+- `EapDbContext` scaffolded with empty model — concrete entity sets are introduced per module from Sprint 1 onwards.
+- Frontend Next.js 16.2.3 skeleton created under `frontend/` with React 19.2.5, TypeScript 6.0.2, Tailwind CSS 4.2.2 (+ @tailwindcss/postcss 4.2.2, postcss 8.5.9), TanStack Query 5.97.0, Axios 1.15.0, React Hook Form 7.72.1, Zod 4.3.6, clsx 2.1.1, tailwind-merge 3.5.0, lucide-react 1.8.0 — all versions pinned.
+- Design tokens foundation implemented as CSS custom properties (`src/styles/tokens.css`) mapped into Tailwind 4 via `@theme`, and mirrored in TypeScript (`src/lib/tokens/design-tokens.ts`); tokens match `docs/09-ux-ui/design-system-tokens.md`.
+- RTL-first root layout (`lang="ar"`, `dir="rtl"`), base app shell, and route foundation in place: landing page, `(user)/dashboard`, `admin/dashboard`, and `login` placeholders.
+- Base UI primitives (`Button`, `Card`, `Badge`) created using brand tokens; status badge variants map directly to the documented status color tokens.
+- Centralized Axios client with normalized `ApiError` shape, and a TanStack Query provider wired through an app-level `Providers` component.
 
 ### Completed Items
-- None
+- Backend solution, projects, layer boundaries, and package pinning
+- MediatR + FluentValidation pipeline behavior
+- AutoMapper base profile and DI registration
+- Serilog host integration (reads from configuration)
+- Swagger/OpenAPI configuration (Development-only UI)
+- EF Core `EapDbContext` and Infrastructure DI skeleton
+- Standardized API error contract and global exception middleware
+- Frontend Next.js app scaffolded with pinned versions
+- Tailwind CSS 4 configured via PostCSS + `@theme`
+- RTL-first root layout and app shell
+- Design token CSS + TypeScript mirror
+- Axios client and TanStack Query provider
+- React Hook Form and Zod available as dependencies (first use will land with the login form in Sprint 1)
+- Base UI components: Button, Card, Badge
+- Route foundation: landing, user dashboard placeholder, admin dashboard placeholder, login placeholder
+- `backend/` and `frontend/` README files
 
 ### In Progress Items
 - None
@@ -90,15 +113,19 @@ Not Started
 - None
 
 ### Key Decisions
-- None yet
+- Backend layered as `Eap.Api` / `Eap.Application` / `Eap.Domain` / `Eap.Infrastructure`, with `Eap.Modules/` reserved for per-module class libraries added in later sprints (Modular + Vertical Slice).
+- Design tokens are defined once as CSS custom properties and exposed to Tailwind 4 through `@theme`; JS consumers use a typed mirror in `src/lib/tokens/design-tokens.ts`.
+- Frontend is RTL-first by default at the `<html>` level; LTR is opt-in via `lang="en"`.
+- Admin routes live under the `/admin` URL segment; the user portal uses a `(user)` route group so end-user pages sit at the root (e.g. `/dashboard`).
 
 ### Risks / Notes
 - Foundation quality directly affects all later sprints
+- No business entities or endpoints exist yet — feature modules begin arriving in Sprint 1
+- No authentication is wired yet; all pages are placeholders
 
 ### Next Actions
-- initialize repositories and solution structure
-- confirm package installation versions
-- implement base app shells
+- Close out remaining Sprint 0 verification (restore/build/dev-server smoke test in the target environment)
+- Begin Sprint 1 (Identity & Access Foundations) after sign-off
 
 ---
 

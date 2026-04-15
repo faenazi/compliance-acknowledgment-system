@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>Eap.Api</RootNamespace>
+    <AssemblyName>Eap.Api</AssemblyName>
+    <UserSecretsId>eap-api-c5e0fd0d-8f54-4d46-8d2b-9a3b6f7b5c11</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Eap.Application\Eap.Application.csproj" />
+    <ProjectReference Include="..\Eap.Domain\Eap.Domain.csproj" />
+    <ProjectReference Include="..\Eap.Infrastructure\Eap.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

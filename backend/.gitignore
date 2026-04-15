@@ -1,0 +1,28 @@
+## .NET
+bin/
+obj/
+out/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+
+## Rider
+.idea/
+
+## VS Code
+.vscode/
+
+## Logs
+logs/
+*.log
+
+## Environment files
+*.env
+*.env.local
+appsettings.*.Local.json
+
+## Build artifacts
+**/TestResults/
+*.nupkg
