@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Eap.Domain</RootNamespace>
+    <AssemblyName>Eap.Domain</AssemblyName>
+  </PropertyGroup>
+
+</Project>

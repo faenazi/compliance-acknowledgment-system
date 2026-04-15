@@ -1,0 +1,71 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+/*
+ * Tailwind 4 theme — expose EAP design tokens as Tailwind utilities.
+ * Only the minimum token set used by the app shell is mapped here.
+ * Additional tokens are added as components are built.
+ */
+@theme {
+  --color-brand: var(--color-brand-primary);
+  --color-brand-dark: var(--color-brand-dark);
+  --color-brand-secondary: var(--color-brand-secondary-blue);
+  --color-brand-green: var(--color-brand-green);
+  --color-brand-brown: var(--color-brand-brown);
+  --color-brand-warm: var(--color-brand-warm-grey);
+
+  --color-surface-page: var(--color-surface-page);
+  --color-surface-card: var(--color-surface-card);
+  --color-surface-subtle: var(--color-surface-subtle);
+  --color-surface-soft: var(--color-surface-soft);
+  --color-surface-dark: var(--color-surface-dark);
+
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-tertiary: var(--color-text-tertiary);
+  --color-text-inverse: var(--color-text-inverse);
+  --color-text-link: var(--color-text-link);
+  --color-text-brand: var(--color-text-brand);
+
+  --color-border-default: var(--color-border-default);
+  --color-border-soft: var(--color-border-soft);
+  --color-border-strong: var(--color-border-strong);
+  --color-border-brand: var(--color-border-brand);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  --font-sans: var(--font-family-primary);
+  --font-mono: var(--font-family-mono);
+}
+
+/* RTL-first base */
+html {
+  direction: rtl;
+}
+
+html[lang="en"] {
+  direction: ltr;
+}
+
+body {
+  background-color: var(--color-surface-page);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  text-align: start;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
