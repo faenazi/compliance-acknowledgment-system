@@ -118,7 +118,7 @@ public sealed class UserActionRequirement : AuditableEntity
         UpdatedBy = cancelledBy?.Trim();
     }
 
-    internal void MarkSupersededByNewerCycle(DateTimeOffset whenUtc)
+    public void MarkSupersededByNewerCycle(DateTimeOffset whenUtc)
     {
         if (!IsCurrent)
         {
