@@ -1,7 +1,9 @@
 using Eap.Domain.Acknowledgment;
+using Eap.Domain.Audit;
 using Eap.Domain.Audience;
 using Eap.Domain.Forms;
 using Eap.Domain.Identity;
+using Eap.Domain.Notifications;
 using Eap.Domain.Policy;
 using Eap.Domain.Requirements;
 using Microsoft.EntityFrameworkCore;
@@ -44,6 +46,13 @@ public class EapDbContext : DbContext
     public DbSet<FormField> FormFields => Set<FormField>();
     public DbSet<UserSubmission> UserSubmissions => Set<UserSubmission>();
     public DbSet<UserSubmissionFieldValue> UserSubmissionFieldValues => Set<UserSubmissionFieldValue>();
+
+    // Notifications (Sprint 8)
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NotificationAttempt> NotificationAttempts => Set<NotificationAttempt>();
+
+    // Audit (Sprint 8)
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
