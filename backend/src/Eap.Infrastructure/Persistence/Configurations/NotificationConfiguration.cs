@@ -30,6 +30,10 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
         builder.HasIndex(n => new { n.RelatedEntityType, n.RelatedEntityId })
             .HasDatabaseName("IX_Notifications_RelatedEntity");
 
+        // Sprint 9: composite index for notification dedup check (ExistsAsync).
+        builder.HasIndex(n => new { n.UserId, n.NotificationType, n.RelatedEntityId, n.Status })
+            .HasDatabaseName("IX_Notifications_Dedup");
+
         builder.HasMany(n => n.Attempts)
             .WithOne()
             .HasForeignKey(a => a.NotificationId)

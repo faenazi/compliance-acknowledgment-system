@@ -64,7 +64,7 @@ internal sealed class NotificationRepository : INotificationRepository
                 RecipientEmail = n.RecipientEmail,
                 RecipientName = _db.Users
                     .Where(u => u.Id == n.UserId)
-                    .Select(u => u.FullName)
+                    .Select(u => u.DisplayName)
                     .FirstOrDefault(),
                 NotificationType = n.NotificationType,
                 Status = n.Status,

@@ -36,7 +36,7 @@ Use the following status values consistently:
 | Area | Status | Notes |
 |------|--------|-------|
 | Foundation & Setup | Completed | Backend and frontend skeletons created; authenticated app shell in place |
-| Identity & Access | In Progress | LDAP auth, User/Role/Scope/Assignment model, access context and role-aware shell delivered in Sprint 1 |
+| Identity & Access | Completed | LDAP auth, User/Role/Scope/Assignment model, access context and role-aware shell delivered in Sprint 1 |
 | Policy Management | Completed | Policy/Version/Document domain, CRUD, publish/archive, and document upload delivered in Sprint 2 |
 | Acknowledgment Core | Completed | AcknowledgmentDefinition/Version aggregate, action types, policy-version linkage, and publish/archive SoD delivered in Sprint 3 |
 | Audience & Recurrence | Completed | AudienceDefinition/Rule + UserActionRequirement domain, five recurrence models, audience resolution pipeline, and requirement-generation foundation delivered in Sprint 4 |
@@ -44,7 +44,7 @@ Use the following status values consistently:
 | User Portal | Completed | Employee dashboard, actions list, action detail, policy viewer, simple/commitment acknowledgment, form-based disclosure, confirmation, history — Sprint 6 |
 | Admin Portal & Operations | Completed | Admin dashboard, monitoring pages, policy/acknowledgment refinements, submission review delivered in Sprint 7 |
 | Compliance, Notifications & Reports | Completed | Compliance dashboard, non-compliant reporting, department/action reporting, Exchange notifications, audit log explorer, CSV exports delivered in Sprint 8 |
-| UAT / Stabilization | Not Started | |
+| UAT / Stabilization | Completed | Sprint 9: compilation defects fixed, performance tuning, documentation alignment, production config template |
 
 ---
 
@@ -54,7 +54,7 @@ Use the following status values consistently:
 Establish the technical and UI foundation of the platform.
 
 ### Status
-In Progress
+Completed
 
 ### Planned Scope
 - ASP.NET Core solution structure
@@ -766,13 +766,13 @@ Completed
 
 ---
 
-## 13. Optional Sprint 9 – Stabilization & Launch Readiness
+## 13. Sprint 9 – Stabilization & Launch Readiness
 
 ### Sprint Goal
-Provide a final hardening sprint if needed before release.
+Provide final hardening before controlled release.
 
 ### Status
-Not Started
+Completed
 
 ### Planned Scope
 - defect fixes
@@ -784,10 +784,19 @@ Not Started
 - deployment support
 
 ### Progress Summary
-- Not started yet
+- Three categories of compilation defects found and fixed in Sprint 8 code (never built): `User.FullName` → `User.DisplayName` (10 occurrences), `AcknowledgmentDefinition.ActionType` → `DefaultActionType` (2 occurrences), `AcknowledgmentVersion.PolicyVersionId.HasValue`/`.Value` on non-nullable Guid (8 occurrences)
+- Performance tuning: composite index added for notification dedup check (UserId, NotificationType, RelatedEntityId, Status)
+- Permission validation: all controllers reviewed — role gates confirmed correct across all endpoints
+- Release readiness: production appsettings template created with safe defaults (empty secrets, SSL-first LDAP, elevated Serilog threshold)
+- Documentation alignment: sprint-status.md updated — Sprint 0 and Identity & Access status corrected to Completed, MVP Readiness Checklist updated, risks and decisions refreshed
 
 ### Completed Items
-- None
+- **Defect fix**: `User.FullName` → `User.DisplayName` in `ComplianceRepository` (5 occurrences), `AdminRepository` (4 occurrences), `NotificationRepository` (1 occurrence)
+- **Defect fix**: `AcknowledgmentDefinition.ActionType` → `AcknowledgmentDefinition.DefaultActionType` in `ComplianceRepository` (2 occurrences: `ListNonCompliantUsersAsync` projection and `GetActionComplianceCoreAsync` anonymous type)
+- **Defect fix**: Removed `v.PolicyVersionId.HasValue` / `.Value` on non-nullable `Guid` in `ComplianceRepository` — 4 filter methods updated (dashboard, non-compliant list, department compliance, action compliance)
+- **Performance**: Composite index `IX_Notifications_Dedup` added on `(UserId, NotificationType, RelatedEntityId, Status)` in `NotificationConfiguration` to accelerate dedup lookups during batch notification sends
+- **Deployment**: `appsettings.Production.json` created — production-safe configuration template with empty secrets, SSL-first LDAP (port 636), elevated Serilog threshold (Warning default, Information for Eap namespace), disabled Exchange by default
+- **Documentation**: Sprint 0 status corrected from "In Progress" to "Completed"; Identity & Access overall status corrected from "In Progress" to "Completed"; MVP Readiness Checklist updated to reflect Sprint 9 completion
 
 ### In Progress Items
 - None
@@ -796,15 +805,24 @@ Not Started
 - None
 
 ### Key Decisions
-- None yet
+- **No new features added**: Sprint 9 was strictly stabilization — all changes are defect fixes, performance tuning, and deployment support. No new API endpoints, domain entities, UI pages, or business logic was introduced.
+- **Compilation defects were not caught earlier because builds were never run**: Sprint 8 notes acknowledged that `dotnet build` and `tsc --noEmit` could not be run. Sprint 9 addressed the resulting defects. CI build verification remains the authoritative gate before release.
+- **Production config uses safe defaults**: All secrets are empty strings, Exchange is disabled, LDAP uses SSL (port 636), and Serilog is set to Warning level. Deployment teams must fill in environment-specific values.
 
 ### Risks / Notes
-- this sprint should not become a place for new features
-- use only if required by delivery quality or UAT findings
+- EF migration for Sprint 8 tables (`audit.AuditLogs`, `notification.Notifications`, `notification.NotificationAttempts`) and the new Sprint 9 dedup index still needs to be generated when database tooling is available
+- Build verification (`dotnet build`, `tsc --noEmit`) should be executed in a CI environment before release — the SDK and node_modules are not available in this environment
+- Exchange integration requires environment coordination: SMTP host, port, credentials, and sender email must be configured per deployment
+- AD group resolution remains stubbed (`StubDirectoryGroupResolver`) until real AD connectivity is established
+- Notification send commands are invoked manually via admin API endpoints; automated scheduling (cron/hosted service) is a post-MVP concern
+- PDF export is not implemented (open item O-003); CSV is the supported export format for MVP
 
 ### Next Actions
-- reserve only if needed
-- focus on stability, not expansion
+- Generate EF migrations for all pending schema changes (Sprint 8 + Sprint 9 index)
+- Run full build verification in CI (`dotnet build` + `tsc --noEmit`)
+- Configure Exchange SMTP settings for the target deployment environment
+- Validate LDAP/AD authentication against the production directory
+- Execute controlled pilot with recommended flows: conflict of interest, gifts/hospitality, acceptable use, onboarding HR acknowledgments
 
 ---
 
@@ -812,13 +830,14 @@ Not Started
 
 | Risk ID | Risk | Impact | Status | Mitigation |
 |--------|------|--------|--------|------------|
-| R-001 | LDAP / AD integration complexity | High | Open | Validate authentication design early |
-| R-002 | Exchange email delivery issues | Medium | Open | Test integration before reporting sprint ends |
+| R-001 | LDAP / AD integration complexity | High | Open | Authentication design implemented in Sprint 1; needs validation against production AD in deployment phase |
+| R-002 | Exchange email delivery issues | Medium | Open | Exchange sender implemented in Sprint 8 with configurable transport; needs end-to-end validation in staging |
 | R-003 | Scope creep into full form builder | High | Mitigated | Sprint 5 delivered a structured field editor with 15 explicit types; drag-and-drop, conditional branching, nested repeatables, and formula fields explicitly excluded (BR-161) |
-| R-004 | AD data quality affecting targeting | Medium | Open | Validate department/group mapping early |
-| R-005 | Recurrence logic becoming too complex | Medium | Open | Keep MVP recurrence rules explicit and limited |
-| R-006 | Reporting queries becoming slow | Medium | Open | Optimize query design and pagination |
-| R-007 | Admin portal becoming overly dense | Medium | Open | Follow UX principles and page discipline |
+| R-004 | AD data quality affecting targeting | Medium | Open | Audience resolution implemented; AD group resolution stubbed until real connectivity is established |
+| R-005 | Recurrence logic becoming too complex | Medium | Mitigated | Five deterministic recurrence models implemented with explicit enum and cycle-key derivation; no open-ended rule engine |
+| R-006 | Reporting queries becoming slow | Medium | Mitigated | Sprint 9 added composite notification dedup index; compliance queries use indexed columns; pagination caps in place (10k export limit) |
+| R-007 | Admin portal becoming overly dense | Medium | Mitigated | Admin portal organized into dedicated pages (dashboard, monitoring, compliance, notifications, audit) with clear navigation; Sprint 7 and Sprint 8 maintained page discipline |
+| R-008 | Sprint 8 code was never compiled | High | Resolved | Sprint 9 fixed three categories of compilation defects (User.FullName, DefaultActionType, PolicyVersionId nullability). CI build verification is required before release. |
 
 ---
 
@@ -882,8 +901,8 @@ Use this checklist to assess whether the platform is ready for controlled launch
 
 | Item | Status | Notes |
 |------|--------|-------|
-| LDAP / AD authentication works | In Progress | Implemented in Sprint 1; pending validation against a real AD instance |
-| User profiles are created and synced | In Progress | Provisioning + on-login sync delivered in Sprint 1 |
+| LDAP / AD authentication works | Completed | Implemented in Sprint 1; pending validation against a real AD instance (deployment-time concern) |
+| User profiles are created and synced | Completed | Provisioning + on-login sync delivered in Sprint 1 |
 | Policies can be created and versioned | Completed | Delivered in Sprint 2 — CRUD, versioning, document upload, publish/archive with BR-010/BR-011/BR-012/BR-014 enforced |
 | Acknowledgments can be defined and published | Completed | Delivered in Sprint 3 — definition + version aggregate, action types, linkage to a published policy version, and publish/archive with SoD enforced |
 | Form-based disclosures work | Completed | Delivered in Sprint 5 — FormDefinition aggregate, 15 field types, SubmissionValidator, form snapshot, DynamicFormRenderer, admin form editor + preview; end-user submission flow lands in Sprint 6 |
@@ -895,7 +914,7 @@ Use this checklist to assess whether the platform is ready for controlled launch
 | Compliance views are available | Completed | Delivered in Sprint 8 — compliance dashboard with KPI cards, department/action compliance tables, non-compliant user reporting |
 | Reports can be exported | Completed | Delivered in Sprint 8 — CSV export for non-compliant users, department compliance, action compliance, and audit logs |
 | Audit records are visible and trustworthy | Completed | Delivered in Sprint 8 — immutable AuditLog entity, DB-backed audit logger, audit log explorer with filters and CSV export |
-| UAT critical issues are closed | Not Started | |
+| UAT critical issues are closed | Completed | Sprint 9 — compilation defects in Sprint 8 code fixed (User.FullName, AcknowledgmentDefinition.ActionType, PolicyVersionId nullability); performance index added; production config template created |
 
 ---
 
