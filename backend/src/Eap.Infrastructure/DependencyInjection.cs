@@ -1,4 +1,5 @@
 using Eap.Application.Acknowledgments.Abstractions;
+using Eap.Application.Admin.Abstractions;
 using Eap.Application.Audience.Abstractions;
 using Eap.Application.Forms.Abstractions;
 using Eap.Application.Identity.Abstractions;
@@ -9,6 +10,7 @@ using Eap.Application.Requirements.Services;
 using Eap.Application.UserPortal.Abstractions;
 using Eap.Infrastructure.Acknowledgments.Audit;
 using Eap.Infrastructure.Acknowledgments.Persistence;
+using Eap.Infrastructure.Admin.Persistence;
 using Eap.Infrastructure.Audience.Audit;
 using Eap.Infrastructure.Audience.Resolution;
 using Eap.Infrastructure.Forms.Audit;
@@ -50,6 +52,7 @@ public static class DependencyInjection
         AddRequirementGeneration(services, configuration);
         AddFormDisclosures(services, configuration);
         AddUserPortal(services);
+        AddAdminPortal(services);
         return services;
     }
 
@@ -137,6 +140,11 @@ public static class DependencyInjection
     private static void AddUserPortal(IServiceCollection services)
     {
         services.AddScoped<IUserPortalRepository, UserPortalRepository>();
+    }
+
+    private static void AddAdminPortal(IServiceCollection services)
+    {
+        services.AddScoped<IAdminRepository, AdminRepository>();
     }
 
     private static void AddRequirementGeneration(IServiceCollection services, IConfiguration configuration)

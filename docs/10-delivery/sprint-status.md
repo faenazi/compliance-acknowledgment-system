@@ -42,7 +42,7 @@ Use the following status values consistently:
 | Audience & Recurrence | Completed | AudienceDefinition/Rule + UserActionRequirement domain, five recurrence models, audience resolution pipeline, and requirement-generation foundation delivered in Sprint 4 |
 | Form-Based Disclosures | Completed | FormDefinition aggregate (version-bound), 15 field types, dynamic renderer, submission validation, form snapshot, file upload, admin form management + preview delivered in Sprint 5 |
 | User Portal | Completed | Employee dashboard, actions list, action detail, policy viewer, simple/commitment acknowledgment, form-based disclosure, confirmation, history — Sprint 6 |
-| Admin Portal & Operations | Not Started | |
+| Admin Portal & Operations | Completed | Admin dashboard, monitoring pages, policy/acknowledgment refinements, submission review delivered in Sprint 7 |
 | Compliance, Notifications & Reports | Not Started | |
 | UAT / Stabilization | Not Started | |
 
@@ -599,7 +599,7 @@ Completed
 Deliver the admin operational experience for managing actions and monitoring usage.
 
 ### Status
-Not Started
+Completed
 
 ### Planned Scope
 - admin dashboard
@@ -610,10 +610,38 @@ Not Started
 - operational summary views
 
 ### Progress Summary
-- Not started yet
+- Full admin operational experience delivered across backend and frontend. Backend introduces a dedicated `IAdminRepository` with cross-entity LINQ joins for dashboard aggregation, paginated/filtered requirement listing, requirement detail drill-down, and submission detail drill-down — all under `/api/admin/` endpoints gated to admin roles.
+- Admin dashboard replaced Sprint 1 placeholder with 6 operational KPI cards (active policies, active acknowledgments, pending/overdue/completed actions, completion rate), recently published items lists, and quick-links to key admin sections.
+- Policy and acknowledgment management pages refined with "Last Updated" column and "Owner Department" text filter for improved discoverability.
+- New user action monitoring page provides a filterable, paginated table of all user action requirements with 7 filter dimensions (search, status, department, recurrence model, due date range) and columns for user, department, action (with type), version, status badge, assignment date, due date, and completion date.
+- Requirement detail page shows full context across 4 information cards (requirement info, user info, action info, policy info) with a link to the linked submission if one exists.
+- Submission review page displays user context, action/policy context, commitment text (for AcknowledgmentWithCommitment), structured field values table (for FormBasedDisclosure), and raw submission JSON for audit purposes.
+- Admin portal navigation updated with "متابعة الإجراءات" (monitoring) entry.
 
 ### Completed Items
-- None
+- Application: `AdminDashboardDto`, `RecentlyPublishedItemDto` (KPI + recently-published projections)
+- Application: `AdminRequirementSummaryDto`, `AdminRequirementDetailDto`, `AdminSubmissionDetailDto`, `AdminFieldValueDto`, `AdminRequirementsFilter` (monitoring DTOs)
+- Application: `IAdminRepository` abstraction with `GetDashboardAsync`, `ListRequirementsAsync`, `GetRequirementDetailAsync`, `GetSubmissionDetailAsync`
+- Application: `GetAdminDashboardQuery` + handler
+- Application: `ListUserRequirementsQuery` + FluentValidation validator + handler (paginated + multi-filter)
+- Application: `GetAdminRequirementDetailQuery` + handler (with NotFoundException guard)
+- Application: `GetAdminSubmissionDetailQuery` + handler (with NotFoundException guard)
+- Infrastructure: `AdminRepository` — EF Core implementation with cross-entity LINQ joins across Users, UserActionRequirements, AcknowledgmentVersions, AcknowledgmentDefinitions, PolicyVersions, Policies, UserSubmissions, and UserSubmissionFieldValues
+- Infrastructure: DI registration via `AddAdminPortal` in `DependencyInjection.cs`
+- API: `AdminDashboardController` — GET `/api/admin/dashboard` with optional `recentLimit` param
+- API: `AdminMonitoringController` — GET `/api/admin/monitoring/requirements` (paged + filtered), GET `/api/admin/monitoring/requirements/{id}`, GET `/api/admin/monitoring/submissions/{id}`
+- Frontend: `lib/admin/types.ts` — TypeScript interfaces for all admin DTOs
+- Frontend: `lib/api/admin.ts` — Axios API adapter (4 functions)
+- Frontend: `lib/admin/hooks.ts` — TanStack Query hooks (4 queries) with `adminKeys` factory
+- Frontend: `lib/admin/labels.ts` — Arabic labels for requirement statuses, recurrence models, plus `formatDate`/`formatDateTime` utilities
+- Frontend: `components/admin/KpiCard.tsx` — Reusable KPI card with configurable icon, accent color, subtitle, and click navigation
+- Frontend: `/admin/dashboard` — Real operational dashboard with 6 KPI cards, recently published policies/acknowledgments, quick links
+- Frontend: `/admin/policies` — Added "آخر تحديث" (Last Updated) column and "الإدارة المالكة" (Owner Department) filter
+- Frontend: `/admin/acknowledgments` — Added "آخر تحديث" (Last Updated) column and "الإدارة المالكة" (Owner Department) filter
+- Frontend: `/admin/monitoring` — Full monitoring page with 7-filter bar, paginated table, status badges, drill-down links
+- Frontend: `/admin/monitoring/[requirementId]` — Requirement detail with 4 info cards and optional submission link
+- Frontend: `/admin/monitoring/submissions/[submissionId]` — Submission review with user/action/policy context, commitment text, field values table, raw JSON
+- Frontend: `PortalNav` updated with "متابعة الإجراءات" nav entry in `ADMIN_PORTAL_NAV`
 
 ### In Progress Items
 - None
@@ -622,16 +650,24 @@ Not Started
 - None
 
 ### Key Decisions
-- None yet
+- **Admin read-path is independent from user portal**: `IAdminRepository` is a separate abstraction from `IUserPortalRepository`, ensuring admin queries are not user-scoped and can aggregate across all users/departments. This follows the documentation's guidance to keep admin and user-scoped read paths independent.
+- **Dashboard is operational, not analytical**: 6 KPI cards show real-time counts and a completion rate percentage. No charts, no trend analysis, no drill-down analytics. Per the documentation: "avoid making the dashboard overly analytical in MVP."
+- **Monitoring table prioritizes overdue items**: The requirement listing query orders by status priority (Overdue first, then Pending, then Completed, then Cancelled) so admin attention is drawn to the most urgent items.
+- **Submission review shows both structured and raw data**: Field values are displayed in a structured table for form-based disclosures, while the raw JSON is always available for audit purposes regardless of action type.
+- **Refinements to existing pages are additive**: Policy and acknowledgment pages gained "Last Updated" and "Owner Department" columns/filters without changing existing functionality or breaking established patterns.
+- **Admin endpoints use shared role gate**: All admin portal endpoints require one of the admin roles (SystemAdministrator, PolicyManager, AcknowledgmentManager, Publisher, ComplianceViewer, Auditor), consistent with the portal navigation's `ADMIN_ROLES` gate.
 
 ### Risks / Notes
-- admin portal must stay structured and efficient
-- avoid making the dashboard overly analytical in MVP
+- Build verification via `dotnet build` and `tsc --noEmit` could not be run in this environment (SDK + node_modules absent). Required before release; CI is the authoritative gate.
+- No EF migration was generated in this sprint — Sprint 7 does not introduce new tables or schema changes; it reads from existing tables via LINQ projections.
+- Automated requirement generation scheduling (cron/hosted service) is deliberately excluded from Sprint 7; the generator command from Sprint 4 remains manually invocable.
+- CSV/Excel export from monitoring tables, compliance dashboard, notification triggers, and audit log explorer are all Sprint 8 scope.
+- The admin dashboard completion rate is calculated as `CompletedUserActions / TotalUserActions * 100` across current-cycle requirements only.
 
 ### Next Actions
-- implement monitoring queries
-- build admin monitoring screens
-- refine operational summaries
+- Run backend + frontend builds in CI to confirm the Sprint 7 slice compiles end-to-end
+- Author integration tests for: (a) dashboard KPI accuracy, (b) monitoring filter combinations, (c) requirement detail projection completeness, (d) submission detail with field values
+- Begin Sprint 8 (Compliance, Notifications, Audit & Reports)
 
 ---
 
@@ -805,7 +841,7 @@ Use this checklist to assess whether the platform is ready for controlled launch
 | Audience targeting works correctly | Completed | Delivered in Sprint 4 — AllUsers/Department/AD-group inclusion, explicit exclusions, BR-054/BR-055 enforced, admin UI + preview in place (AD group resolution stubbed until LDAP group sync lands) |
 | Recurrence logic works correctly | Completed | Delivered in Sprint 4 — five deterministic recurrence models with `SetRecurrence` command, publish gate per BR-033, requirement-generation foundation with deterministic cycle keys |
 | User portal is usable end-to-end | Completed | Delivered in Sprint 6 — dashboard, actions list, action detail, policy viewer, simple/commitment acknowledgment, form-based disclosure, confirmation, history with submission detail; all Arabic-first RTL |
-| Admin portal is usable end-to-end | Not Started | |
+| Admin portal is usable end-to-end | Completed | Delivered in Sprint 7 — operational dashboard, policy/acknowledgment refinements, user action monitoring, requirement detail, submission review; all Arabic-first RTL |
 | Notifications are sent through Exchange | Not Started | |
 | Compliance views are available | Not Started | |
 | Reports can be exported | Not Started | |

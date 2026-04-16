@@ -10,17 +10,19 @@ import { useAcknowledgmentDefinitions } from "@/lib/acknowledgments/hooks";
 import {
   AcknowledgmentStatus,
   ActionType,
+  RecurrenceModel,
 } from "@/lib/acknowledgments/types";
 import { actionTypeLabel } from "@/lib/acknowledgments/labels";
+import { recurrenceModelLabel, formatDate } from "@/lib/admin/labels";
 import { useSession } from "@/lib/auth/SessionProvider";
 import { Roles, hasAnyRole } from "@/lib/auth/roles";
 
 const PAGE_SIZE = 20;
 
 /**
- * Admin portal acknowledgments index. Presents a filterable, paged list of
- * master acknowledgment definitions with the currently-published version
- * surfaced inline. Creation is gated on the AcknowledgmentManager role.
+ * Admin portal acknowledgments index (Sprint 7 refinement).
+ * Adds "Recurrence Model" column (via versions), "Owner Department" filter,
+ * and "Last Updated" column per admin-portal-pages.md §9.
  */
 export default function AdminAcknowledgmentsPage() {
   const { user } = useSession();
@@ -33,6 +35,7 @@ export default function AdminAcknowledgmentsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<AcknowledgmentStatus | "">("");
   const [actionFilter, setActionFilter] = useState<ActionType | "">("");
+  const [deptFilter, setDeptFilter] = useState("");
 
   const { data, isLoading, isError, error, refetch } = useAcknowledgmentDefinitions({
     page,
@@ -40,6 +43,7 @@ export default function AdminAcknowledgmentsPage() {
     search: search || undefined,
     status: statusFilter === "" ? undefined : statusFilter,
     actionType: actionFilter === "" ? undefined : actionFilter,
+    ownerDepartment: deptFilter || undefined,
   });
 
   const items = data?.items ?? [];
@@ -67,6 +71,7 @@ export default function AdminAcknowledgmentsPage() {
           <CardTitle>قائمة الإقرارات</CardTitle>
         </CardHeader>
         <CardBody>
+          {/* Filter bar */}
           <div className="mb-5 flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[220px]">
               <label
@@ -142,6 +147,22 @@ export default function AdminAcknowledgmentsPage() {
                 </option>
               </select>
             </div>
+            <div className="min-w-[160px]">
+              <label htmlFor="ack-dept" className="block text-xs font-medium text-[var(--color-text-tertiary)]">
+                الإدارة المالكة
+              </label>
+              <input
+                id="ack-dept"
+                type="text"
+                value={deptFilter}
+                placeholder="الكل"
+                onChange={(e) => {
+                  setPage(1);
+                  setDeptFilter(e.target.value);
+                }}
+                className="mt-1 block h-10 w-full rounded-[10px] border border-[var(--color-border-strong)] bg-white px-3 text-sm outline-none focus:border-[var(--color-brand-primary)]"
+              />
+            </div>
           </div>
 
           {isLoading ? (
@@ -171,6 +192,7 @@ export default function AdminAcknowledgmentsPage() {
                       <th className="py-2 pe-4 font-medium">الحالة</th>
                       <th className="py-2 pe-4 font-medium">النسخة الحالية</th>
                       <th className="py-2 pe-4 font-medium">عدد النسخ</th>
+                      <th className="py-2 pe-4 font-medium">آخر تحديث</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border-default)]">
@@ -195,6 +217,9 @@ export default function AdminAcknowledgmentsPage() {
                           {d.currentVersionNumber ? `v${d.currentVersionNumber}` : "—"}
                         </td>
                         <td className="py-3 pe-4">{d.versionsCount}</td>
+                        <td className="py-3 pe-4 text-xs text-[var(--color-text-tertiary)]">
+                          {formatDate(d.updatedAtUtc ?? d.createdAtUtc)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
