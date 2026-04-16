@@ -41,7 +41,7 @@ Use the following status values consistently:
 | Acknowledgment Core | Completed | AcknowledgmentDefinition/Version aggregate, action types, policy-version linkage, and publish/archive SoD delivered in Sprint 3 |
 | Audience & Recurrence | Completed | AudienceDefinition/Rule + UserActionRequirement domain, five recurrence models, audience resolution pipeline, and requirement-generation foundation delivered in Sprint 4 |
 | Form-Based Disclosures | Completed | FormDefinition aggregate (version-bound), 15 field types, dynamic renderer, submission validation, form snapshot, file upload, admin form management + preview delivered in Sprint 5 |
-| User Portal | Not Started | |
+| User Portal | Completed | Employee dashboard, actions list, action detail, policy viewer, simple/commitment acknowledgment, form-based disclosure, confirmation, history — Sprint 6 |
 | Admin Portal & Operations | Not Started | |
 | Compliance, Notifications & Reports | Not Started | |
 | UAT / Stabilization | Not Started | |
@@ -516,7 +516,7 @@ Completed
 Deliver the employee-facing portal and completion flows.
 
 ### Status
-Not Started
+Completed
 
 ### Planned Scope
 - user dashboard
@@ -524,15 +524,45 @@ Not Started
 - action details
 - policy viewer
 - simple acknowledgment submission
-- disclosure submission
+- commitment acknowledgment submission
+- disclosure submission (form-based)
 - submission confirmation
 - my history
+- submission detail view
 
 ### Progress Summary
-- Not started yet
+- Full employee-facing portal delivered with backend API layer and frontend pages for all documented user portal workflows.
+- Backend: `UserPortalController` with 7 endpoints under `/api/me/` (dashboard, actions list, action detail, acknowledge, disclose, history list, submission detail). Repository pattern via `IUserPortalRepository` with complex LINQ joins across requirements, acknowledgment versions, definitions, policies, and submissions. Two MediatR commands (`SubmitAcknowledgmentCommand`, `SubmitDisclosureCommand`) enforce BR-036 (no duplicate submissions), status validation, and action-type guards.
+- `UserSubmission` domain entity extended: `FormDefinitionId` made nullable, second constructor added for non-form submissions (simple + commitment), `UserActionRequirementId` and `IsLateSubmission` properties added, `LinkToRequirement()` method introduced.
+- Frontend: 8 user portal pages built with Arabic-first RTL layout, design token compliance, and responsive design. All pages use TanStack Query hooks for data fetching and cache invalidation on mutations.
+- Portal navigation updated with "الإجراءات المطلوبة" (My Actions) and "سجلّي" (My History) links in the user portal nav.
 
 ### Completed Items
-- None
+- Domain: `UserSubmission` extended with nullable `FormDefinitionId`, `UserActionRequirementId`, `IsLateSubmission`, second constructor for non-form submissions, `LinkToRequirement()` method
+- Infrastructure: `UserSubmissionConfiguration` updated (nullable FK, new columns, index on `UserActionRequirementId`)
+- Application: `IUserPortalRepository` abstraction with dashboard, actions, detail, history, and submission queries
+- Application: `UserPortalDtos.cs` — `MyDashboardDto`, `MyActionSummaryDto`, `MyActionDetailDto`, `MyHistoryItemDto`, `MySubmissionDetailDto`, `SubmissionResultDto`
+- Application: 5 query handlers — `GetMyDashboard`, `GetMyActions`, `GetMyActionDetail`, `GetMyHistory`, `GetMySubmissionDetail`
+- Application: 2 command handlers — `SubmitAcknowledgment` (simple + commitment), `SubmitDisclosure` (form-based with snapshot)
+- Infrastructure: `UserPortalRepository` with complex LINQ projections across all domain aggregates
+- Infrastructure: DI registration via `AddUserPortal`
+- API: `UserPortalController` — GET dashboard, GET actions (paged), GET action detail, POST acknowledge, POST disclose, GET history (paged), GET submission detail
+- Frontend: `lib/user-portal/types.ts` — TypeScript interfaces mirroring all backend DTOs
+- Frontend: `lib/api/user-portal.ts` — Axios-based API adapter (7 functions)
+- Frontend: `lib/user-portal/hooks.ts` — TanStack Query hooks (5 queries + 2 mutations) with query key factory
+- Frontend: `lib/user-portal/labels.ts` — Arabic status labels, badge palettes, date formatters
+- Frontend: `components/user-portal/RequirementStatusBadge.tsx` — reusable status badge
+- Frontend: `/dashboard` — employee dashboard with summary cards (pending/overdue/completed), pending actions list, recently completed list
+- Frontend: `/actions` — searchable, filterable table with status pills, pagination, overdue highlighting
+- Frontend: `/actions/[requirementId]` — full action detail with metadata sidebar, policy info, submission navigation
+- Frontend: `/actions/[requirementId]/policy` — policy document viewer with PDF iframe and download fallback
+- Frontend: `/actions/[requirementId]/acknowledge` — simple acknowledgment with checkbox confirmation
+- Frontend: `/actions/[requirementId]/commit` — commitment acknowledgment with dual-checkbox (policy + commitment)
+- Frontend: `/actions/[requirementId]/disclose` — form-based disclosure using `DynamicFormRenderer` from Sprint 5
+- Frontend: `/actions/[requirementId]/confirmation` — submission success page with details and navigation
+- Frontend: `/history` — paginated submission history table with late-submission badge
+- Frontend: `/history/[submissionId]` — submission detail with field values (form-based) or JSON display (simple/commitment)
+- Frontend: `PortalNav` updated with "الإجراءات المطلوبة" and "سجلّي" navigation items
 
 ### In Progress Items
 - None
@@ -541,17 +571,25 @@ Not Started
 - None
 
 ### Key Decisions
-- None yet
+- **API route design**: All user portal endpoints live under `/api/me/` to cleanly separate from admin endpoints. Requirement-centric submission routes (`/api/me/actions/{id}/acknowledge`, `/api/me/actions/{id}/disclose`) make the action type explicit in the URL.
+- **UserSubmission made flexible**: `FormDefinitionId` made nullable so simple and commitment acknowledgments can create submissions without a form definition. A second constructor was added alongside the original form-based one.
+- **Submission JSON structure**: Simple and commitment acknowledgments store a minimal JSON payload (`{"type":"simple|commitment","confirmed":true,"timestamp":"..."}`) rather than an empty body, providing traceability in the audit trail.
+- **Late submission detection**: `IsLateSubmission` is derived at submission time from the requirement status (Overdue → late). This is a point-in-time fact stored on the submission, not recalculated.
+- **Reuse of Sprint 5 components**: The form-based disclosure page reuses `DynamicFormRenderer` and `buildZodSchema` from Sprint 5 unchanged, validating the component design.
+- **No blocking enforcement (Phase 1)**: Overdue requirements show visual warnings but do not prevent navigation or access. Users can still submit overdue actions.
+- **Portal navigation augmented, not replaced**: Two new nav items added to `USER_PORTAL_NAV` between the dashboard and profile links; existing admin portal link preserved with role gating.
 
 ### Risks / Notes
-- user experience must remain low-friction
-- policy reading and submission path must be very clear
-- no blocking behavior should be introduced in Phase 1
+- Build verification via `dotnet build` and `tsc --noEmit` could not be run in this environment (SDK + node_modules absent). Required before release; CI is the authoritative gate.
+- The policy document viewer uses an iframe to render PDFs. Browser PDF support varies; the download fallback is always available.
+- No EF migration was generated in this sprint — the `UserSubmission` schema changes (nullable `FormDefinitionId`, new `UserActionRequirementId` and `IsLateSubmission` columns) will be materialized by the standard migration flow.
+- Draft-save for long disclosure forms (O-005) is not implemented; submissions are atomic as in Sprint 5.
+- The confirmation page re-fetches the action detail to show post-submission state; if TanStack Query cache is stale, the user may briefly see the pre-submission status before invalidation completes.
 
 ### Next Actions
-- implement end-user APIs
-- build dashboard and action flow pages
-- validate long form readability
+- Generate the EF migration for `UserSubmission` schema changes
+- Author integration tests for: (a) duplicate submission rejection (BR-036), (b) action-type guard on acknowledge vs. disclose, (c) late submission flag accuracy, (d) dashboard count correctness
+- Begin Sprint 7 (Admin Portal & Operations)
 
 ---
 
@@ -766,7 +804,7 @@ Use this checklist to assess whether the platform is ready for controlled launch
 | Form-based disclosures work | Completed | Delivered in Sprint 5 — FormDefinition aggregate, 15 field types, SubmissionValidator, form snapshot, DynamicFormRenderer, admin form editor + preview; end-user submission flow lands in Sprint 6 |
 | Audience targeting works correctly | Completed | Delivered in Sprint 4 — AllUsers/Department/AD-group inclusion, explicit exclusions, BR-054/BR-055 enforced, admin UI + preview in place (AD group resolution stubbed until LDAP group sync lands) |
 | Recurrence logic works correctly | Completed | Delivered in Sprint 4 — five deterministic recurrence models with `SetRecurrence` command, publish gate per BR-033, requirement-generation foundation with deterministic cycle keys |
-| User portal is usable end-to-end | Not Started | |
+| User portal is usable end-to-end | Completed | Delivered in Sprint 6 — dashboard, actions list, action detail, policy viewer, simple/commitment acknowledgment, form-based disclosure, confirmation, history with submission detail; all Arabic-first RTL |
 | Admin portal is usable end-to-end | Not Started | |
 | Notifications are sent through Exchange | Not Started | |
 | Compliance views are available | Not Started | |

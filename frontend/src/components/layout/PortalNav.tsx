@@ -54,6 +54,8 @@ export function PortalNav({ items }: { items: readonly NavItem[] }) {
 /** Shared navigation for the authenticated user portal. */
 export const USER_PORTAL_NAV: readonly NavItem[] = [
   { href: "/dashboard", label: "لوحة الموظف" },
+  { href: "/actions", label: "الإجراءات المطلوبة" },
+  { href: "/history", label: "سجلّي" },
   { href: "/profile", label: "ملفي الشخصي" },
   { href: "/admin/dashboard", label: "بوابة الإدارة", requireRoles: ADMIN_ROLES },
 ];
