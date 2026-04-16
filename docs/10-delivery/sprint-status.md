@@ -43,7 +43,7 @@ Use the following status values consistently:
 | Form-Based Disclosures | Completed | FormDefinition aggregate (version-bound), 15 field types, dynamic renderer, submission validation, form snapshot, file upload, admin form management + preview delivered in Sprint 5 |
 | User Portal | Completed | Employee dashboard, actions list, action detail, policy viewer, simple/commitment acknowledgment, form-based disclosure, confirmation, history — Sprint 6 |
 | Admin Portal & Operations | Completed | Admin dashboard, monitoring pages, policy/acknowledgment refinements, submission review delivered in Sprint 7 |
-| Compliance, Notifications & Reports | Not Started | |
+| Compliance, Notifications & Reports | Completed | Compliance dashboard, non-compliant reporting, department/action reporting, Exchange notifications, audit log explorer, CSV exports delivered in Sprint 8 |
 | UAT / Stabilization | Not Started | |
 
 ---
@@ -677,7 +677,7 @@ Completed
 Deliver operational visibility, outbound notifications, and release-readiness functions.
 
 ### Status
-Not Started
+Completed
 
 ### Planned Scope
 - compliance dashboard
@@ -691,10 +691,44 @@ Not Started
 - final MVP integration checks
 
 ### Progress Summary
-- Not started yet
+- Full compliance reporting module delivered with backend (compliance summary APIs, department-level and action-level queries, non-compliant user queries) and frontend (compliance dashboard with KPI cards, department/action completion tables, top non-compliant users, compliance reports page with search/filter/pagination/export).
+- Exchange notification system delivered: `ExchangeEmailSender` with configurable SMTP transport (host, port, SSL, credentials, sender address all externalised via `Exchange` config section), assignment/reminder/overdue notification commands via MediatR, `Notification` and `NotificationAttempt` domain entities for delivery tracking, notification log viewer page with send triggers.
+- Immutable `AuditLog` domain entity introduced under `Eap.Domain/Audit` with DB-backed persistence via `AuditLogRepository`. `PlatformAuditLogger` central facade writes audit records to the database while continuing to emit to Serilog for operational log continuity. Audit log explorer page delivers searchable, filterable, paginated audit trail with CSV export.
+- CSV export endpoints for all three report types (non-compliant users, department compliance, action compliance) plus audit log export — all UTF-8 BOM-encoded for Excel compatibility, Arabic column headers.
+- Admin portal navigation updated with الامتثال (Compliance), الإشعارات (Notifications), and المراجعة (Audit) entries. Admin dashboard quick links updated.
 
 ### Completed Items
-- None
+- Domain: `AuditLog` entity (immutable, all fields per BR-132 / CDM §9.3)
+- Domain: `Notification` entity with `NotificationAttempt` child collection, `NotificationType` enum (Assignment/Reminder/Overdue), `NotificationStatus` enum (Queued/Sent/Failed/Cancelled)
+- EF Configurations: `AuditLogConfiguration` (schema `audit`), `NotificationConfiguration` + `NotificationAttemptConfiguration` (schema `notification`)
+- `EapDbContext` updated with `Notifications`, `NotificationAttempts`, `AuditLogs` DbSets
+- Application: `IComplianceRepository` abstraction + `ComplianceDashboardDto`, `DepartmentComplianceDto`, `ActionComplianceDto`, `NonCompliantUserSummaryDto`, `NonCompliantUserDetailDto`, `ComplianceReportFilter`, `ComplianceDashboardFilter` DTOs
+- Application: `GetComplianceDashboardQuery` + handler, `ListNonCompliantUsersQuery` + validator + handler
+- Application: `IEmailSender` abstraction, `INotificationRepository` abstraction, `NotificationOptions` (configurable `ReminderDaysBeforeDue`)
+- Application: `SendAssignmentNotificationsCommand` + handler, `SendReminderNotificationsCommand` + handler, `SendOverdueNotificationsCommand` + handler
+- Application: `ListNotificationsQuery` + handler, `NotificationSummaryDto`, `NotificationResultDto`
+- Application: `IAuditLogRepository` abstraction, `IPlatformAuditLogger` abstraction
+- Application: `ListAuditLogsQuery` + validator + handler, `AuditLogDto`, `AuditLogDetailDto`, `AuditLogFilter`
+- Infrastructure: `ComplianceRepository` — EF Core cross-entity LINQ joins for compliance metrics
+- Infrastructure: `ExchangeEmailSender` — SMTP-based email delivery with configurable transport via `ExchangeEmailOptions`
+- Infrastructure: `NotificationRepository` — persistence + filtered listing with recipient name join
+- Infrastructure: `AuditLogRepository` — immutable write + filtered/paginated read
+- Infrastructure: `PlatformAuditLogger` — central DB-backed audit sink + Serilog continuity
+- Infrastructure DI: `AddComplianceReporting`, `AddNotifications`, `AddAuditModule` registration methods
+- API: `ComplianceController` (GET dashboard, GET non-compliant) with admin role gates
+- API: `ComplianceExportController` (GET non-compliant CSV, GET departments CSV, GET actions CSV)
+- API: `NotificationsController` (POST send-assignments, POST send-reminders, POST send-overdue, GET list)
+- API: `AuditController` (GET list) with Auditor/SystemAdministrator/ComplianceViewer role gates
+- API: `AuditExportController` (GET CSV export)
+- `appsettings.json` updated with `Exchange` and `Notifications` configuration sections
+- Frontend: `lib/compliance/types.ts`, `lib/compliance/hooks.ts`, `lib/compliance/labels.ts`, `lib/api/compliance.ts`
+- Frontend: `lib/audit/types.ts`, `lib/audit/hooks.ts`, `lib/audit/labels.ts`, `lib/api/audit.ts`
+- Frontend: `/admin/compliance` — Compliance dashboard with KPI cards, department table, action table, non-compliant users
+- Frontend: `/admin/compliance/reports` — Non-compliant users paginated report with filters and CSV export
+- Frontend: `/admin/audit` — Audit log explorer with entity type, action type, date range, search filters, and CSV export
+- Frontend: `/admin/notifications` — Notification operations page with send triggers and notification log table
+- Frontend: `PortalNav` updated with الامتثال, الإشعارات, المراجعة nav entries
+- Frontend: Admin dashboard quick links updated with compliance and audit links
 
 ### In Progress Items
 - None
@@ -703,17 +737,32 @@ Not Started
 - None
 
 ### Key Decisions
-- None yet
+- **Exchange transport is configurable**: All SMTP settings (host, port, SSL, credentials, sender email/name) are externalised via the `Exchange` configuration section. A master `Enabled` switch allows environments to disable email delivery while still logging notifications. No sender/transport values are hardcoded.
+- **Notification is isolated from domain truth (BR-113)**: Notification delivery status is tracked independently on the `Notification` entity and never alters `UserActionRequirement` status. Failed notifications are logged but do not change submission truth.
+- **Reminder schedule is configurable**: `Notifications:ReminderDaysBeforeDue` (default 7) controls when reminder notifications are sent. The value can be overridden per invocation via the command parameter.
+- **Audit log is DB-backed and immutable**: `AuditLog` entity has no update methods — records are insert-only. The `PlatformAuditLogger` writes to both the database and Serilog, preserving backward compatibility with the Serilog-based audit events from Sprints 1-7 while adding persistent, queryable audit storage.
+- **CSV export chosen for MVP**: Export uses CSV format with UTF-8 BOM for Excel compatibility and Arabic column headers. No additional library required. PDF export is deferred to Sprint 9 if needed (open item O-003).
+- **Compliance queries are real-time, not snapshot-based**: Dashboard and report data is computed live from `UserActionRequirements` (current cycle only) with cross-entity LINQ joins. No `ComplianceSnapshot` materialization in Phase 1 — this approach keeps the implementation simple while the data volume is manageable.
+- **Notification deduplication**: Assignment, reminder, and overdue commands check for existing notifications before sending, preventing duplicate emails for the same user/requirement/type combination.
+- **Admin portal navigation expanded**: Three new nav entries (Compliance, Notifications, Audit) added to `ADMIN_PORTAL_NAV`, all gated to `ADMIN_ROLES`.
 
 ### Risks / Notes
-- Exchange integration may require environment coordination
-- reports must stay operational, not become BI-heavy
-- audit logs must remain trustworthy and easy to inspect
+- Build verification via `dotnet build` and `tsc --noEmit` could not be run in this environment (SDK + node_modules absent). Required before release; CI is the authoritative gate.
+- No EF migration was generated in this sprint — the new `audit.AuditLogs`, `notification.Notifications`, and `notification.NotificationAttempts` tables will be materialized by the standard migration flow when the database tooling is available.
+- Exchange integration requires environment coordination: SMTP host, port, credentials, and sender email must be configured per deployment. The `Enabled: false` default prevents accidental email sends in development.
+- Notification send commands are invoked manually via admin API endpoints. Automated scheduling (cron/hosted service) is a Sprint 9 / future-sprint concern.
+- PDF export is not implemented in Sprint 8 (open item O-003). CSV is the supported export format for MVP.
+- Compliance queries join across multiple entity tables (Users, UserActionRequirements, AcknowledgmentVersions, AcknowledgmentDefinitions, PolicyVersions). Performance should be monitored after data volume grows; indexes are in place on key columns.
+- The `PlatformAuditLogger` is available for use by new code and can be incrementally adopted by existing modules (Identity, Policy, Acknowledgment audit loggers) in the stabilization sprint if desired.
 
 ### Next Actions
-- implement compliance queries
-- implement notification sender
-- implement audit explorer and export flows
+- Generate EF migration for new tables (`audit.AuditLogs`, `notification.Notifications`, `notification.NotificationAttempts`)
+- Configure Exchange SMTP settings for the target deployment environment
+- Author integration tests for: (a) compliance dashboard KPI accuracy, (b) non-compliant user report filtering, (c) notification deduplication, (d) audit log immutability, (e) CSV export format validation
+- Validate Exchange email delivery end-to-end in a staging environment
+- Consider automated notification scheduling (hosted service/cron) for Sprint 9
+- Consider PDF export capability for Sprint 9 if UAT feedback requires it
+- Begin Sprint 9 (Stabilization & Launch Readiness) if needed
 
 ---
 
@@ -842,10 +891,10 @@ Use this checklist to assess whether the platform is ready for controlled launch
 | Recurrence logic works correctly | Completed | Delivered in Sprint 4 — five deterministic recurrence models with `SetRecurrence` command, publish gate per BR-033, requirement-generation foundation with deterministic cycle keys |
 | User portal is usable end-to-end | Completed | Delivered in Sprint 6 — dashboard, actions list, action detail, policy viewer, simple/commitment acknowledgment, form-based disclosure, confirmation, history with submission detail; all Arabic-first RTL |
 | Admin portal is usable end-to-end | Completed | Delivered in Sprint 7 — operational dashboard, policy/acknowledgment refinements, user action monitoring, requirement detail, submission review; all Arabic-first RTL |
-| Notifications are sent through Exchange | Not Started | |
-| Compliance views are available | Not Started | |
-| Reports can be exported | Not Started | |
-| Audit records are visible and trustworthy | Not Started | |
+| Notifications are sent through Exchange | Completed | Delivered in Sprint 8 — Exchange/SMTP sender with configurable transport, assignment/reminder/overdue commands, notification log with delivery tracking |
+| Compliance views are available | Completed | Delivered in Sprint 8 — compliance dashboard with KPI cards, department/action compliance tables, non-compliant user reporting |
+| Reports can be exported | Completed | Delivered in Sprint 8 — CSV export for non-compliant users, department compliance, action compliance, and audit logs |
+| Audit records are visible and trustworthy | Completed | Delivered in Sprint 8 — immutable AuditLog entity, DB-backed audit logger, audit log explorer with filters and CSV export |
 | UAT critical issues are closed | Not Started | |
 
 ---

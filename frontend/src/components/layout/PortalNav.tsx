@@ -66,5 +66,8 @@ export const ADMIN_PORTAL_NAV: readonly NavItem[] = [
   { href: "/admin/policies", label: "السياسات", requireRoles: ADMIN_ROLES },
   { href: "/admin/acknowledgments", label: "الإقرارات", requireRoles: ADMIN_ROLES },
   { href: "/admin/monitoring", label: "متابعة الإجراءات", requireRoles: ADMIN_ROLES },
+  { href: "/admin/compliance", label: "الامتثال", requireRoles: ADMIN_ROLES },
+  { href: "/admin/notifications", label: "الإشعارات", requireRoles: ADMIN_ROLES },
+  { href: "/admin/audit", label: "المراجعة", requireRoles: ADMIN_ROLES },
   { href: "/dashboard", label: "بوابة الموظف" },
 ];

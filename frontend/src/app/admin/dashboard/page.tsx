@@ -179,6 +179,12 @@ export default function AdminDashboardPage() {
                   <Link href="/admin/monitoring">
                     <Button variant="secondary" size="sm">متابعة الإجراءات</Button>
                   </Link>
+                  <Link href="/admin/compliance">
+                    <Button variant="secondary" size="sm">لوحة الامتثال</Button>
+                  </Link>
+                  <Link href="/admin/audit">
+                    <Button variant="secondary" size="sm">سجل المراجعة</Button>
+                  </Link>
                 </div>
               </CardBody>
             </Card>

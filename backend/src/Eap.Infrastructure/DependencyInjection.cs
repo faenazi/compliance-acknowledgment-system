@@ -1,9 +1,13 @@
 using Eap.Application.Acknowledgments.Abstractions;
 using Eap.Application.Admin.Abstractions;
+using Eap.Application.Audit.Abstractions;
 using Eap.Application.Audience.Abstractions;
+using Eap.Application.Compliance.Abstractions;
 using Eap.Application.Forms.Abstractions;
 using Eap.Application.Identity.Abstractions;
 using Eap.Application.Identity.Services;
+using Eap.Application.Notifications.Abstractions;
+using Eap.Application.Notifications.Commands.SendReminderNotifications;
 using Eap.Application.Policies.Abstractions;
 using Eap.Application.Requirements.Abstractions;
 using Eap.Application.Requirements.Services;
@@ -11,8 +15,11 @@ using Eap.Application.UserPortal.Abstractions;
 using Eap.Infrastructure.Acknowledgments.Audit;
 using Eap.Infrastructure.Acknowledgments.Persistence;
 using Eap.Infrastructure.Admin.Persistence;
+using Eap.Infrastructure.Audit;
+using Eap.Infrastructure.Audit.Persistence;
 using Eap.Infrastructure.Audience.Audit;
 using Eap.Infrastructure.Audience.Resolution;
+using Eap.Infrastructure.Compliance.Persistence;
 using Eap.Infrastructure.Forms.Audit;
 using Eap.Infrastructure.Forms.Persistence;
 using Eap.Infrastructure.Forms.Storage;
@@ -20,6 +27,8 @@ using Eap.Infrastructure.Identity;
 using Eap.Infrastructure.Identity.Ldap;
 using Eap.Infrastructure.Identity.Persistence;
 using Eap.Infrastructure.Identity.Seeding;
+using Eap.Infrastructure.Notifications;
+using Eap.Infrastructure.Notifications.Persistence;
 using Eap.Infrastructure.Persistence;
 using Eap.Infrastructure.Policies.Audit;
 using Eap.Infrastructure.Policies.Documents;
@@ -53,6 +62,9 @@ public static class DependencyInjection
         AddFormDisclosures(services, configuration);
         AddUserPortal(services);
         AddAdminPortal(services);
+        AddComplianceReporting(services);
+        AddNotifications(services, configuration);
+        AddAuditModule(services);
         return services;
     }
 
@@ -145,6 +157,30 @@ public static class DependencyInjection
     private static void AddAdminPortal(IServiceCollection services)
     {
         services.AddScoped<IAdminRepository, AdminRepository>();
+    }
+
+    private static void AddComplianceReporting(IServiceCollection services)
+    {
+        services.AddScoped<IComplianceRepository, ComplianceRepository>();
+    }
+
+    private static void AddNotifications(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<ExchangeEmailOptions>()
+            .Bind(configuration.GetSection(ExchangeEmailOptions.SectionName))
+            .ValidateDataAnnotations();
+
+        services.AddOptions<NotificationOptions>()
+            .Bind(configuration.GetSection(NotificationOptions.SectionName));
+
+        services.AddScoped<IEmailSender, ExchangeEmailSender>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+    }
+
+    private static void AddAuditModule(IServiceCollection services)
+    {
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IPlatformAuditLogger, PlatformAuditLogger>();
     }
 
     private static void AddRequirementGeneration(IServiceCollection services, IConfiguration configuration)
