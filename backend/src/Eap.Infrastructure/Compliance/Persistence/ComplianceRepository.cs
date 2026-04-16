@@ -50,9 +50,8 @@ internal sealed class ComplianceRepository : IComplianceRepository
             requirementsQuery = requirementsQuery.Where(r =>
                 _db.AcknowledgmentVersions.Any(v =>
                     v.Id == r.AcknowledgmentVersionId
-                    && v.PolicyVersionId.HasValue
                     && _db.PolicyVersions.Any(pv =>
-                        pv.Id == v.PolicyVersionId.Value
+                        pv.Id == v.PolicyVersionId
                         && pv.PolicyId == filter.PolicyId.Value)));
         }
 
@@ -115,9 +114,8 @@ internal sealed class ComplianceRepository : IComplianceRepository
         if (filter.PolicyId.HasValue)
         {
             query = query.Where(x =>
-                x.av.PolicyVersionId.HasValue
-                && _db.PolicyVersions.Any(pv =>
-                    pv.Id == x.av.PolicyVersionId.Value
+                _db.PolicyVersions.Any(pv =>
+                    pv.Id == x.av.PolicyVersionId
                     && pv.PolicyId == filter.PolicyId.Value));
         }
 
@@ -130,7 +128,7 @@ internal sealed class ComplianceRepository : IComplianceRepository
         {
             var searchTerm = filter.Search.Trim();
             query = query.Where(x =>
-                x.u.FullName.Contains(searchTerm)
+                x.u.DisplayName.Contains(searchTerm)
                 || x.u.Username.Contains(searchTerm)
                 || x.ad.Title.Contains(searchTerm));
         }
@@ -140,20 +138,20 @@ internal sealed class ComplianceRepository : IComplianceRepository
         var items = await query
             .OrderByDescending(x => x.r.Status == UserActionRequirementStatus.Overdue ? 0 : 1)
             .ThenBy(x => x.r.DueDate)
-            .ThenBy(x => x.u.FullName)
+            .ThenBy(x => x.u.DisplayName)
             .Skip((filter.Page - 1) * filter.PageSize)
             .Take(filter.PageSize)
             .Select(x => new NonCompliantUserDetailDto
             {
                 UserId = x.u.Id,
-                DisplayName = x.u.FullName,
+                DisplayName = x.u.DisplayName,
                 Department = x.u.Department ?? string.Empty,
                 Email = x.u.Email,
                 RequirementId = x.r.Id,
                 AcknowledgmentDefinitionId = x.ad.Id,
                 AcknowledgmentVersionId = x.av.Id,
                 ActionTitle = x.ad.Title,
-                ActionType = x.ad.ActionType,
+                ActionType = x.ad.DefaultActionType,
                 Status = x.r.Status,
                 DueDate = x.r.DueDate,
                 AssignedAtUtc = x.r.AssignedAtUtc,
@@ -184,9 +182,8 @@ internal sealed class ComplianceRepository : IComplianceRepository
             query = query.Where(r =>
                 _db.AcknowledgmentVersions.Any(v =>
                     v.Id == r.AcknowledgmentVersionId
-                    && v.PolicyVersionId.HasValue
                     && _db.PolicyVersions.Any(pv =>
-                        pv.Id == v.PolicyVersionId.Value
+                        pv.Id == v.PolicyVersionId
                         && pv.PolicyId == policyId.Value)));
         }
 
@@ -211,9 +208,8 @@ internal sealed class ComplianceRepository : IComplianceRepository
             query = query.Where(r =>
                 _db.AcknowledgmentVersions.Any(v =>
                     v.Id == r.AcknowledgmentVersionId
-                    && v.PolicyVersionId.HasValue
                     && _db.PolicyVersions.Any(pv =>
-                        pv.Id == v.PolicyVersionId.Value
+                        pv.Id == v.PolicyVersionId
                         && pv.PolicyId == policyId.Value)));
         }
 
@@ -259,7 +255,7 @@ internal sealed class ComplianceRepository : IComplianceRepository
                          r.Status,
                          ad.Id,
                          ad.Title,
-                         ad.ActionType,
+                         ActionType = ad.DefaultActionType,
                          ad.OwnerDepartment,
                      };
 
@@ -295,11 +291,11 @@ internal sealed class ComplianceRepository : IComplianceRepository
                            select new { u, r.Status };
 
         return await nonCompliant
-            .GroupBy(x => new { x.u.Id, x.u.FullName, Department = x.u.Department ?? "غير محدد", x.u.Email })
+            .GroupBy(x => new { x.u.Id, x.u.DisplayName, Department = x.u.Department ?? "غير محدد", x.u.Email })
             .Select(g => new NonCompliantUserSummaryDto
             {
                 UserId = g.Key.Id,
-                DisplayName = g.Key.FullName,
+                DisplayName = g.Key.DisplayName,
                 Department = g.Key.Department,
                 Email = g.Key.Email,
                 PendingCount = g.Count(x => x.Status == UserActionRequirementStatus.Pending),

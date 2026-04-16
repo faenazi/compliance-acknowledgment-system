@@ -186,7 +186,7 @@ internal sealed class AdminRepository : IAdminRepository
             IsCurrent = row.Req.IsCurrent,
 
             UserId = row.User.Id,
-            UserDisplayName = row.User.FullName,
+            UserDisplayName = row.User.DisplayName,
             UserDepartment = row.User.Department ?? "",
             UserEmail = row.User.Email,
 
@@ -223,7 +223,7 @@ internal sealed class AdminRepository : IAdminRepository
         var user = await _db.Users
             .AsNoTracking()
             .Where(u => u.Id == submission.UserId)
-            .Select(u => new { u.FullName, u.Department })
+            .Select(u => new { u.DisplayName, u.Department })
             .FirstOrDefaultAsync(ct);
 
         var context = await (
@@ -268,7 +268,7 @@ internal sealed class AdminRepository : IAdminRepository
             IsLateSubmission = submission.IsLateSubmission,
 
             UserId = submission.UserId,
-            UserDisplayName = user?.FullName ?? "",
+            UserDisplayName = user?.DisplayName ?? "",
             UserDepartment = user?.Department ?? "",
 
             AcknowledgmentDefinitionId = context.AckDefId,
@@ -317,7 +317,7 @@ internal sealed class AdminRepository : IAdminRepository
                {
                    RequirementId = r.Id,
                    UserId = u.Id,
-                   UserDisplayName = u.FullName,
+                   UserDisplayName = u.DisplayName,
                    UserDepartment = u.Department ?? "",
                    AcknowledgmentDefinitionId = ad.Id,
                    AcknowledgmentVersionId = av.Id,
