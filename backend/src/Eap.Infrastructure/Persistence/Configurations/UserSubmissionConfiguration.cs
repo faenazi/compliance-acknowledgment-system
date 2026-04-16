@@ -15,14 +15,14 @@ internal sealed class UserSubmissionConfiguration
 
         builder.Property(s => s.UserId).IsRequired();
         builder.Property(s => s.AcknowledgmentVersionId).IsRequired();
-        builder.Property(s => s.FormDefinitionId).IsRequired();
+        builder.Property(s => s.FormDefinitionId);
+        builder.Property(s => s.UserActionRequirementId);
 
         builder.Property(s => s.SubmissionJson)
             .IsRequired()
             .HasColumnType("nvarchar(max)");
 
         builder.Property(s => s.FormDefinitionSnapshotJson)
-            .IsRequired()
             .HasColumnType("nvarchar(max)");
 
         builder.Property(s => s.Status)
@@ -30,6 +30,7 @@ internal sealed class UserSubmissionConfiguration
             .IsRequired();
 
         builder.Property(s => s.SubmittedAtUtc).IsRequired();
+        builder.Property(s => s.IsLateSubmission).HasDefaultValue(false);
 
         builder.Property(s => s.CreatedAtUtc).IsRequired();
         builder.Property(s => s.UpdatedAtUtc);
@@ -38,6 +39,7 @@ internal sealed class UserSubmissionConfiguration
 
         builder.HasIndex(s => new { s.AcknowledgmentVersionId, s.UserId });
         builder.HasIndex(s => s.UserId);
+        builder.HasIndex(s => s.UserActionRequirementId);
 
         // Flattened field values owned by the submission.
         builder.HasMany(s => s.FieldValues)

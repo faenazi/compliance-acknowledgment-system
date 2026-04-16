@@ -6,6 +6,7 @@ using Eap.Application.Identity.Services;
 using Eap.Application.Policies.Abstractions;
 using Eap.Application.Requirements.Abstractions;
 using Eap.Application.Requirements.Services;
+using Eap.Application.UserPortal.Abstractions;
 using Eap.Infrastructure.Acknowledgments.Audit;
 using Eap.Infrastructure.Acknowledgments.Persistence;
 using Eap.Infrastructure.Audience.Audit;
@@ -23,6 +24,7 @@ using Eap.Infrastructure.Policies.Documents;
 using Eap.Infrastructure.Policies.Persistence;
 using Eap.Infrastructure.Requirements.Audit;
 using Eap.Infrastructure.Requirements.Persistence;
+using Eap.Infrastructure.UserPortal.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,6 +49,7 @@ public static class DependencyInjection
         AddAudienceTargeting(services, configuration);
         AddRequirementGeneration(services, configuration);
         AddFormDisclosures(services, configuration);
+        AddUserPortal(services);
         return services;
     }
 
@@ -129,6 +132,11 @@ public static class DependencyInjection
         services.AddScoped<IUserSubmissionRepository, UserSubmissionRepository>();
         services.AddSingleton<IFormUploadStorage, FileSystemFormUploadStorage>();
         services.AddScoped<IFormAuditLogger, FormAuditLogger>();
+    }
+
+    private static void AddUserPortal(IServiceCollection services)
+    {
+        services.AddScoped<IUserPortalRepository, UserPortalRepository>();
     }
 
     private static void AddRequirementGeneration(IServiceCollection services, IConfiguration configuration)
