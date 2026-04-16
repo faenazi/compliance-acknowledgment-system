@@ -21,6 +21,9 @@ internal sealed class AcknowledgmentRepository : IAcknowledgmentRepository
             .Include(d => d.Versions)
                 .ThenInclude(v => v.Audience!)
                 .ThenInclude(a => a.Rules)
+            .Include(d => d.Versions)
+                .ThenInclude(v => v.FormDefinition!)
+                .ThenInclude(f => f.Fields)
             .FirstOrDefaultAsync(d => d.Id == definitionId, cancellationToken);
 
     public async Task<AcknowledgmentDefinition?> FindDefinitionByVersionIdAsync(

@@ -1,5 +1,6 @@
 using Eap.Domain.Acknowledgment;
 using Eap.Domain.Audience;
+using Eap.Domain.Forms;
 using Eap.Domain.Identity;
 using Eap.Domain.Policy;
 using Eap.Domain.Requirements;
@@ -37,6 +38,12 @@ public class EapDbContext : DbContext
     public DbSet<AudienceDefinition> AudienceDefinitions => Set<AudienceDefinition>();
     public DbSet<AudienceRule> AudienceRules => Set<AudienceRule>();
     public DbSet<UserActionRequirement> UserActionRequirements => Set<UserActionRequirement>();
+
+    // Form-based disclosures (Sprint 5)
+    public DbSet<FormDefinition> FormDefinitions => Set<FormDefinition>();
+    public DbSet<FormField> FormFields => Set<FormField>();
+    public DbSet<UserSubmission> UserSubmissions => Set<UserSubmission>();
+    public DbSet<UserSubmissionFieldValue> UserSubmissionFieldValues => Set<UserSubmissionFieldValue>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

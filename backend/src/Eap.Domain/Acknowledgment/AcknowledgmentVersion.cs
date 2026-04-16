@@ -1,5 +1,6 @@
 using Eap.Domain.Audience;
 using Eap.Domain.Common;
+using Eap.Domain.Forms;
 
 namespace Eap.Domain.Acknowledgment;
 
@@ -96,6 +97,11 @@ public sealed class AcknowledgmentVersion : AuditableEntity
     /// (BR-032). Populated by configuring audience rules on a draft version.</summary>
     public AudienceDefinition? Audience { get; private set; }
 
+    /// <summary>0..1 <see cref="FormDefinition"/> owned by this version
+    /// (BR-070). Required when <see cref="ActionType"/> is
+    /// <see cref="ActionType.FormBasedDisclosure"/>.</summary>
+    public FormDefinition? FormDefinition { get; private set; }
+
     public DateTimeOffset? PublishedAtUtc { get; private set; }
 
     public string? PublishedBy { get; private set; }
@@ -174,6 +180,19 @@ public sealed class AcknowledgmentVersion : AuditableEntity
         return Audience;
     }
 
+    /// <summary>Attaches (or returns the existing) form definition for a draft (BR-070).</summary>
+    public FormDefinition ConfigureFormDefinition(string? configuredBy)
+    {
+        EnsureDraft("configure form definition on");
+
+        if (FormDefinition is null)
+        {
+            FormDefinition = new FormDefinition(Id, configuredBy);
+        }
+
+        return FormDefinition;
+    }
+
     /// <summary>Publishes the version. Callers enforce the "one published version per
     /// definition" rule at the aggregate level via <see cref="AcknowledgmentDefinition.PublishVersion"/>.</summary>
     internal void MarkPublished(string? publishedBy, DateTimeOffset whenUtc)
@@ -197,6 +216,16 @@ public sealed class AcknowledgmentVersion : AuditableEntity
         {
             throw new InvalidOperationException(
                 "Cannot publish: the target audience must be defined first (BR-032).");
+        }
+
+        // BR-070 — form-based disclosures require a form definition with at least one input field.
+        if (ActionType == ActionType.FormBasedDisclosure)
+        {
+            if (FormDefinition is null || !FormDefinition.HasAnyInputField)
+            {
+                throw new InvalidOperationException(
+                    "Cannot publish: a form-based disclosure must have a form definition with at least one input field (BR-070).");
+            }
         }
 
         Status = AcknowledgmentVersionStatus.Published;

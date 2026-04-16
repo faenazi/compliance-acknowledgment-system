@@ -252,6 +252,28 @@ export default function AcknowledgmentVersionDetailPage({ params }: Props) {
           </CardBody>
         </Card>
       </div>
+
+      {version.actionType === ActionType.FormBasedDisclosure && (
+        <div className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>تعريف النموذج</CardTitle>
+              <Link
+                href={`/admin/acknowledgments/${definitionId}/versions/${versionId}/form`}
+                className="text-sm text-[var(--color-brand-primary)] hover:underline"
+              >
+                {canEdit ? "إدارة" : "عرض"}
+              </Link>
+            </CardHeader>
+            <CardBody>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                حدد حقول نموذج الإفصاح المطلوبة لهذه النسخة. يجب تعريف النموذج
+                قبل النشر (BR-070).
+              </p>
+            </CardBody>
+          </Card>
+        </div>
+      )}
     </>
   );
 }

@@ -1,5 +1,6 @@
 using Eap.Application.Acknowledgments.Abstractions;
 using Eap.Application.Audience.Abstractions;
+using Eap.Application.Forms.Abstractions;
 using Eap.Application.Identity.Abstractions;
 using Eap.Application.Identity.Services;
 using Eap.Application.Policies.Abstractions;
@@ -9,6 +10,9 @@ using Eap.Infrastructure.Acknowledgments.Audit;
 using Eap.Infrastructure.Acknowledgments.Persistence;
 using Eap.Infrastructure.Audience.Audit;
 using Eap.Infrastructure.Audience.Resolution;
+using Eap.Infrastructure.Forms.Audit;
+using Eap.Infrastructure.Forms.Persistence;
+using Eap.Infrastructure.Forms.Storage;
 using Eap.Infrastructure.Identity;
 using Eap.Infrastructure.Identity.Ldap;
 using Eap.Infrastructure.Identity.Persistence;
@@ -42,6 +46,7 @@ public static class DependencyInjection
         AddAcknowledgmentManagement(services, configuration);
         AddAudienceTargeting(services, configuration);
         AddRequirementGeneration(services, configuration);
+        AddFormDisclosures(services, configuration);
         return services;
     }
 
@@ -111,6 +116,19 @@ public static class DependencyInjection
         services.AddScoped<IAudienceResolver, AudienceResolver>();
         services.AddScoped<IDirectoryGroupResolver, StubDirectoryGroupResolver>();
         services.AddScoped<IAudienceAuditLogger, AudienceAuditLogger>();
+    }
+
+    private static void AddFormDisclosures(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<FormUploadStorageOptions>()
+            .Bind(configuration.GetSection(FormUploadStorageOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddScoped<IFormDefinitionRepository, FormDefinitionRepository>();
+        services.AddScoped<IUserSubmissionRepository, UserSubmissionRepository>();
+        services.AddSingleton<IFormUploadStorage, FileSystemFormUploadStorage>();
+        services.AddScoped<IFormAuditLogger, FormAuditLogger>();
     }
 
     private static void AddRequirementGeneration(IServiceCollection services, IConfiguration configuration)
