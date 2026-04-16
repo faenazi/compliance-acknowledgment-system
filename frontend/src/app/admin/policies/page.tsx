@@ -7,15 +7,16 @@ import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { PolicyStatusBadge } from "@/components/policies/PolicyStatusBadge";
 import { usePolicies } from "@/lib/policies/hooks";
 import { PolicyStatus } from "@/lib/policies/types";
+import { formatDate } from "@/lib/admin/labels";
 import { useSession } from "@/lib/auth/SessionProvider";
 import { Roles, hasAnyRole } from "@/lib/auth/roles";
 
 const PAGE_SIZE = 20;
 
 /**
- * Admin portal policies index. Presents a filterable, paged list of master
- * policies with the most recent published version surfaced inline.
- * Creation is gated on the PolicyManager role.
+ * Admin portal policies index (Sprint 7 refinement).
+ * Adds "Last Updated" column, "Owner Department" filter, and
+ * improves overall table readability per admin-portal-pages.md §5.
  */
 export default function AdminPoliciesPage() {
   const { user } = useSession();
@@ -24,12 +25,14 @@ export default function AdminPoliciesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<PolicyStatus | "">("");
+  const [deptFilter, setDeptFilter] = useState("");
 
   const { data, isLoading, isError, error, refetch } = usePolicies({
     page,
     pageSize: PAGE_SIZE,
     search: search || undefined,
     status: statusFilter === "" ? undefined : statusFilter,
+    ownerDepartment: deptFilter || undefined,
   });
 
   const items = data?.items ?? [];
@@ -56,6 +59,7 @@ export default function AdminPoliciesPage() {
           <CardTitle>قائمة السياسات</CardTitle>
         </CardHeader>
         <CardBody>
+          {/* Filter bar */}
           <div className="mb-5 flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[220px]">
               <label htmlFor="policy-search" className="block text-xs font-medium text-[var(--color-text-tertiary)]">
@@ -91,6 +95,22 @@ export default function AdminPoliciesPage() {
                 <option value={PolicyStatus.Archived}>مؤرشفة</option>
               </select>
             </div>
+            <div className="min-w-[160px]">
+              <label htmlFor="policy-dept" className="block text-xs font-medium text-[var(--color-text-tertiary)]">
+                الإدارة المالكة
+              </label>
+              <input
+                id="policy-dept"
+                type="text"
+                value={deptFilter}
+                placeholder="الكل"
+                onChange={(e) => {
+                  setPage(1);
+                  setDeptFilter(e.target.value);
+                }}
+                className="mt-1 block h-10 w-full rounded-[10px] border border-[var(--color-border-strong)] bg-white px-3 text-sm outline-none focus:border-[var(--color-brand-primary)]"
+              />
+            </div>
           </div>
 
           {isLoading ? (
@@ -118,6 +138,7 @@ export default function AdminPoliciesPage() {
                       <th className="py-2 pe-4 font-medium">الحالة</th>
                       <th className="py-2 pe-4 font-medium">النسخة الحالية</th>
                       <th className="py-2 pe-4 font-medium">عدد النسخ</th>
+                      <th className="py-2 pe-4 font-medium">آخر تحديث</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border-default)]">
@@ -138,6 +159,9 @@ export default function AdminPoliciesPage() {
                           {p.currentVersionNumber ? `v${p.currentVersionNumber}` : "—"}
                         </td>
                         <td className="py-3 pe-4">{p.versionsCount}</td>
+                        <td className="py-3 pe-4 text-xs text-[var(--color-text-tertiary)]">
+                          {formatDate(p.updatedAtUtc ?? p.createdAtUtc)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
