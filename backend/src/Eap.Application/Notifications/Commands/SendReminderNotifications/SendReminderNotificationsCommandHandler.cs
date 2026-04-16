@@ -1,10 +1,7 @@
 using Eap.Application.Notifications.Abstractions;
 using Eap.Application.Notifications.Models;
 using Eap.Domain.Notifications;
-using Eap.Domain.Requirements;
-using Eap.Infrastructure.Persistence;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -13,20 +10,20 @@ namespace Eap.Application.Notifications.Commands.SendReminderNotifications;
 internal sealed class SendReminderNotificationsCommandHandler
     : IRequestHandler<SendReminderNotificationsCommand, NotificationResultDto>
 {
-    private readonly EapDbContext _db;
+    private readonly INotificationCandidateQuery _candidateQuery;
     private readonly IEmailSender _emailSender;
     private readonly INotificationRepository _notificationRepo;
     private readonly NotificationOptions _options;
     private readonly ILogger<SendReminderNotificationsCommandHandler> _logger;
 
     public SendReminderNotificationsCommandHandler(
-        EapDbContext db,
+        INotificationCandidateQuery candidateQuery,
         IEmailSender emailSender,
         INotificationRepository notificationRepo,
         IOptions<NotificationOptions> options,
         ILogger<SendReminderNotificationsCommandHandler> logger)
     {
-        _db = db;
+        _candidateQuery = candidateQuery;
         _emailSender = emailSender;
         _notificationRepo = notificationRepo;
         _options = options.Value;
@@ -39,52 +36,42 @@ internal sealed class SendReminderNotificationsCommandHandler
         var reminderDays = request.ReminderDaysBeforeDue ?? _options.ReminderDaysBeforeDue;
         var cutoffDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(reminderDays));
 
-        var candidates = await (
-            from r in _db.UserActionRequirements
-            where r.IsCurrent
-                && r.Status == UserActionRequirementStatus.Pending
-                && r.DueDate.HasValue
-                && r.DueDate.Value <= cutoffDate
-            join u in _db.Users on r.UserId equals u.Id
-            join av in _db.AcknowledgmentVersions on r.AcknowledgmentVersionId equals av.Id
-            join ad in _db.AcknowledgmentDefinitions on av.AcknowledgmentDefinitionId equals ad.Id
-            select new { Requirement = r, User = u, Definition = ad }
-        ).ToListAsync(ct);
+        var candidates = await _candidateQuery.GetReminderCandidatesAsync(cutoffDate, ct);
 
         int sent = 0, failed = 0, skipped = 0;
 
         foreach (var c in candidates)
         {
-            if (string.IsNullOrWhiteSpace(c.User.Email))
+            if (string.IsNullOrWhiteSpace(c.UserEmail))
             {
                 skipped++;
                 continue;
             }
 
             var alreadySent = await _notificationRepo.ExistsAsync(
-                c.User.Id, NotificationType.Reminder, c.Requirement.Id, ct);
+                c.UserId, NotificationType.Reminder, c.RequirementId, ct);
             if (alreadySent)
             {
                 skipped++;
                 continue;
             }
 
-            var subject = $"تذكير: {c.Definition.Title}";
+            var subject = $"تذكير: {c.DefinitionTitle}";
             var body = $"""
                 <div dir="rtl" style="font-family: 'Segoe UI', sans-serif;">
                   <h2>تذكير بإجراء مطلوب</h2>
-                  <p>لديك إجراء مطلوب: <strong>{c.Definition.Title}</strong></p>
-                  <p>الموعد النهائي: {c.Requirement.DueDate:yyyy-MM-dd}</p>
+                  <p>لديك إجراء مطلوب: <strong>{c.DefinitionTitle}</strong></p>
+                  <p>الموعد النهائي: {c.DueDate:yyyy-MM-dd}</p>
                   <p>يرجى إتمام الإجراء قبل الموعد النهائي.</p>
                 </div>
                 """;
 
             var notification = new Notification(
-                c.User.Id, c.User.Email, NotificationType.Reminder,
-                "UserActionRequirement", c.Requirement.Id, subject, body);
+                c.UserId, c.UserEmail, NotificationType.Reminder,
+                "UserActionRequirement", c.RequirementId, subject, body);
 
             var (success, failureReason) = await _emailSender.SendAsync(
-                c.User.Email, subject, body, ct);
+                c.UserEmail, subject, body, ct);
 
             notification.RecordAttempt(success, failureReason);
 
@@ -94,7 +81,7 @@ internal sealed class SendReminderNotificationsCommandHandler
                 notification.MarkFailed(DateTimeOffset.UtcNow);
                 failed++;
                 _logger.LogWarning("{AuditEvent} ReminderNotificationFailed {UserId} {Reason}",
-                    "ReminderNotificationFailed", c.User.Id, failureReason);
+                    "ReminderNotificationFailed", c.UserId, failureReason);
             }
 
             await _notificationRepo.AddAsync(notification, ct);

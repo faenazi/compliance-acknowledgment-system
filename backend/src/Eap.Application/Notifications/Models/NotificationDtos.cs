@@ -36,3 +36,11 @@ public sealed class NotificationResultDto
     public int Failed { get; init; }
     public int Skipped { get; init; }
 }
+
+/// <summary>Projection used by notification command handlers to avoid a direct EF Core dependency.</summary>
+public sealed record NotificationCandidate(
+    Guid RequirementId,
+    Guid UserId,
+    string? UserEmail,
+    DateOnly? DueDate,
+    string DefinitionTitle);

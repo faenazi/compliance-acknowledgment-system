@@ -175,6 +175,7 @@ public static class DependencyInjection
 
         services.AddScoped<IEmailSender, ExchangeEmailSender>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<INotificationCandidateQuery, NotificationCandidateQuery>();
     }
 
     private static void AddAuditModule(IServiceCollection services)

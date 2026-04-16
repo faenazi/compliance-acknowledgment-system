@@ -1,10 +1,7 @@
 using Eap.Application.Notifications.Abstractions;
 using Eap.Application.Notifications.Models;
 using Eap.Domain.Notifications;
-using Eap.Domain.Requirements;
-using Eap.Infrastructure.Persistence;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Eap.Application.Notifications.Commands.SendOverdueNotifications;
@@ -12,18 +9,18 @@ namespace Eap.Application.Notifications.Commands.SendOverdueNotifications;
 internal sealed class SendOverdueNotificationsCommandHandler
     : IRequestHandler<SendOverdueNotificationsCommand, NotificationResultDto>
 {
-    private readonly EapDbContext _db;
+    private readonly INotificationCandidateQuery _candidateQuery;
     private readonly IEmailSender _emailSender;
     private readonly INotificationRepository _notificationRepo;
     private readonly ILogger<SendOverdueNotificationsCommandHandler> _logger;
 
     public SendOverdueNotificationsCommandHandler(
-        EapDbContext db,
+        INotificationCandidateQuery candidateQuery,
         IEmailSender emailSender,
         INotificationRepository notificationRepo,
         ILogger<SendOverdueNotificationsCommandHandler> logger)
     {
-        _db = db;
+        _candidateQuery = candidateQuery;
         _emailSender = emailSender;
         _notificationRepo = notificationRepo;
         _logger = logger;
@@ -32,41 +29,34 @@ internal sealed class SendOverdueNotificationsCommandHandler
     public async Task<NotificationResultDto> Handle(
         SendOverdueNotificationsCommand request, CancellationToken ct)
     {
-        var candidates = await (
-            from r in _db.UserActionRequirements
-            where r.IsCurrent && r.Status == UserActionRequirementStatus.Overdue
-            join u in _db.Users on r.UserId equals u.Id
-            join av in _db.AcknowledgmentVersions on r.AcknowledgmentVersionId equals av.Id
-            join ad in _db.AcknowledgmentDefinitions on av.AcknowledgmentDefinitionId equals ad.Id
-            select new { Requirement = r, User = u, Definition = ad }
-        ).ToListAsync(ct);
+        var candidates = await _candidateQuery.GetOverdueCandidatesAsync(ct);
 
         int sent = 0, failed = 0, skipped = 0;
 
         foreach (var c in candidates)
         {
-            if (string.IsNullOrWhiteSpace(c.User.Email)) { skipped++; continue; }
+            if (string.IsNullOrWhiteSpace(c.UserEmail)) { skipped++; continue; }
 
             var alreadySent = await _notificationRepo.ExistsAsync(
-                c.User.Id, NotificationType.Overdue, c.Requirement.Id, ct);
+                c.UserId, NotificationType.Overdue, c.RequirementId, ct);
             if (alreadySent) { skipped++; continue; }
 
-            var subject = $"إجراء متأخر: {c.Definition.Title}";
+            var subject = $"إجراء متأخر: {c.DefinitionTitle}";
             var body = $"""
                 <div dir="rtl" style="font-family: 'Segoe UI', sans-serif;">
                   <h2>إجراء متأخر</h2>
-                  <p>لديك إجراء تجاوز الموعد النهائي: <strong>{c.Definition.Title}</strong></p>
-                  {(c.Requirement.DueDate.HasValue ? $"<p>كان الموعد النهائي: {c.Requirement.DueDate:yyyy-MM-dd}</p>" : "")}
+                  <p>لديك إجراء تجاوز الموعد النهائي: <strong>{c.DefinitionTitle}</strong></p>
+                  {(c.DueDate.HasValue ? $"<p>كان الموعد النهائي: {c.DueDate:yyyy-MM-dd}</p>" : "")}
                   <p>يرجى إتمام الإجراء في أقرب وقت ممكن.</p>
                 </div>
                 """;
 
             var notification = new Notification(
-                c.User.Id, c.User.Email, NotificationType.Overdue,
-                "UserActionRequirement", c.Requirement.Id, subject, body);
+                c.UserId, c.UserEmail, NotificationType.Overdue,
+                "UserActionRequirement", c.RequirementId, subject, body);
 
             var (success, failureReason) = await _emailSender.SendAsync(
-                c.User.Email, subject, body, ct);
+                c.UserEmail, subject, body, ct);
 
             notification.RecordAttempt(success, failureReason);
 
@@ -76,7 +66,7 @@ internal sealed class SendOverdueNotificationsCommandHandler
                 notification.MarkFailed(DateTimeOffset.UtcNow);
                 failed++;
                 _logger.LogWarning("{AuditEvent} OverdueNotificationFailed {UserId} {Reason}",
-                    "OverdueNotificationFailed", c.User.Id, failureReason);
+                    "OverdueNotificationFailed", c.UserId, failureReason);
             }
 
             await _notificationRepo.AddAsync(notification, ct);
