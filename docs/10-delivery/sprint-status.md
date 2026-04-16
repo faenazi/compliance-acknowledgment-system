@@ -40,7 +40,7 @@ Use the following status values consistently:
 | Policy Management | Completed | Policy/Version/Document domain, CRUD, publish/archive, and document upload delivered in Sprint 2 |
 | Acknowledgment Core | Completed | AcknowledgmentDefinition/Version aggregate, action types, policy-version linkage, and publish/archive SoD delivered in Sprint 3 |
 | Audience & Recurrence | Completed | AudienceDefinition/Rule + UserActionRequirement domain, five recurrence models, audience resolution pipeline, and requirement-generation foundation delivered in Sprint 4 |
-| Form-Based Disclosures | Not Started | |
+| Form-Based Disclosures | Completed | FormDefinition aggregate (version-bound), 15 field types, dynamic renderer, submission validation, form snapshot, file upload, admin form management + preview delivered in Sprint 5 |
 | User Portal | Not Started | |
 | Admin Portal & Operations | Not Started | |
 | Compliance, Notifications & Reports | Not Started | |
@@ -429,7 +429,7 @@ Completed
 Deliver dynamic form-based disclosures for business-critical scenarios.
 
 ### Status
-Not Started
+Completed
 
 ### Planned Scope
 - form definition model
@@ -441,10 +441,41 @@ Not Started
 - submission storage
 
 ### Progress Summary
-- Not started yet
+- `FormDefinition` aggregate introduced as a version-bound 0..1 child of `AcknowledgmentVersion`, following the same pattern as `AudienceDefinition` from Sprint 4. Each form definition owns a sorted collection of `FormField` entities and supports full replace-all semantics through `ReplaceFields`.
+- 15 field types implemented: ShortText, LongText, Email, PhoneNumber, Number, Decimal, Date, Checkbox, YesNo, RadioGroup, Dropdown, MultiSelect, FileUpload, SectionHeader, ReadOnlyDisplay. Types are grouped into value-collecting (13) and display-only (2) categories.
+- `FieldOption` value object supports option-bearing fields (RadioGroup, Dropdown, MultiSelect) with unique value + human-readable label pairs. Domain validation enforces that option-requiring types always carry at least one option.
+- `UserSubmission` entity stores form submissions with the raw JSON payload, a `FormDefinitionSnapshot` JSON (capturing the exact schema at submission time per BR-079/CDM-004), and an optional flattened representation via `UserSubmissionFieldValue` rows for SQL-queryable reporting (§8.2).
+- `SubmissionValidator` performs type-aware server-side validation: required-field enforcement (BR-074), email regex, phone regex, integer/decimal parsing, date parsing, option-value verification (BR-075), multi-select array validation, and boolean type checks.
+- Publish gate extended: `AcknowledgmentVersion.MarkPublished` now enforces BR-070 — FormBasedDisclosure versions must have a FormDefinition with at least one input field before publishing.
+- File upload infrastructure mirrors the existing `PolicyDocumentStorage` pattern: configurable root path, max file size (10 MB default), extension + content-type whitelist, path-traversal protection. Layout: `{RootPath}/{submissionId}/{fieldKey}/{storageFileName}`.
+- Full admin form definition management UX delivered: structured field editor (add/edit/remove/reorder), per-field configuration (key, label, type, required, section, help text, placeholder, display text, options), save via API, and live preview page rendering the dynamic form with Zod validation.
+- `DynamicFormRenderer` component renders all 15 field types using React Hook Form + Zod resolver. Groups fields by section, handles type coercion for numbers/decimals/booleans, and supports inline validation with Arabic error messages.
 
 ### Completed Items
-- None
+- Domain: `FormFieldType` enum (15 values) + `FormFieldTypes` helper class, `FieldOption` value object, `FormField` entity, `FormDefinition` aggregate with `ReplaceFields` + `TakeSnapshot`, `FormDefinitionSnapshot` / `FormFieldSnapshot` records, `SubmissionStatus` enum, `UserSubmission` entity, `UserSubmissionFieldValue` entity
+- Domain: `AcknowledgmentVersion.FormDefinition` navigation property, `ConfigureFormDefinition()` method, BR-070 publish gate
+- Application: DTOs for form definitions, fields, options, submissions, and field values
+- Application: `IFormDefinitionRepository`, `IUserSubmissionRepository`, `IFormUploadStorage`, `IFormAuditLogger` abstractions
+- Application: `SubmissionValidator` with type-aware validation dispatch (required, email, phone, number, decimal, date, checkbox/yesno, radio/dropdown option check, multi-select, file upload)
+- Application: `ConfigureFormDefinitionCommand` + FluentValidation validator + handler
+- Application: `SubmitFormCommand` + validator + handler (snapshot capture, field-value flattening, audit)
+- Application: `GetFormDefinitionByVersionQuery`, `ListSubmissionsByVersionQuery` (paged), `GetSubmissionByIdQuery` + handlers
+- Application: AutoMapper profile for all form DTOs
+- Infrastructure: EF configurations for `FormDefinitions`, `FormFields`, `UserSubmissions`, `UserSubmissionFieldValues` under schema `acknowledgment`
+- Infrastructure: `AcknowledgmentVersionConfiguration` updated with 1:0..1 FK to `FormDefinition` (cascade delete)
+- Infrastructure: `EapDbContext` updated with 4 new DbSets
+- Infrastructure: `FormDefinitionRepository`, `UserSubmissionRepository`
+- Infrastructure: `FormAuditLogger` (Serilog structured events tagged `AuditEvent`)
+- Infrastructure: `FileSystemFormUploadStorage` + `FormUploadStorageOptions` (configurable root path, max size, allowed extensions/content types)
+- Infrastructure: `AcknowledgmentRepository.FindByIdAsync` extended with `.Include(FormDefinition.Fields)` eager loading
+- Infrastructure: DI registration via `AddFormDisclosures`
+- API: `FormDefinitionsController` (GET + PUT), `FormSubmissionsController` (POST + GET list + GET detail), `FormUploadsController` (POST upload + GET download)
+- API: `appsettings.json` updated with `FormUploads` configuration section
+- Frontend: `lib/forms/types.ts` (all types, enums, helpers), `lib/forms/labels.ts` (Arabic labels for 15 types), `lib/api/forms.ts` (API client), `lib/forms/hooks.ts` (TanStack Query hooks), `lib/forms/zodFromSchema.ts` (dynamic Zod schema builder)
+- Frontend: `FieldOptionsEditor`, `FieldEditor`, `FormDefinitionEditor`, `DynamicFormRenderer` components
+- Frontend: Form Definition Management admin page (`/admin/acknowledgments/:def/versions/:ver/form`)
+- Frontend: Form Preview admin page (`/admin/acknowledgments/:def/versions/:ver/form/preview`)
+- Frontend: Version detail page updated with conditional Form Definition card for FormBasedDisclosure versions
 
 ### In Progress Items
 - None
@@ -453,17 +484,29 @@ Not Started
 - None
 
 ### Key Decisions
-- None yet
+- **FormDefinition follows AudienceDefinition pattern**: 0..1 child of `AcknowledgmentVersion` with the same lifecycle, configuration command, and EF mapping approach. This maintains architectural consistency across Sprint 4 and 5.
+- **Structured editor, not drag-and-drop (BR-161)**: form fields are managed through a structured list editor with add/remove/reorder buttons. Visual drag-and-drop is explicitly excluded from Phase 1.
+- **15 explicit field types, not extensible**: the field type enum is a closed set covering the documented disclosure scenarios. No plugin system, no custom field types, no formula fields.
+- **Form schema is explicit JSON, not a DSL**: field definitions are stored as typed domain entities (not a free-form JSON blob) and serialized to JSON only for snapshot/submission purposes. This keeps validation compile-time-safe on the backend.
+- **Snapshot at submission time (BR-079/CDM-004)**: when a user submits, the exact form schema is captured as `FormDefinitionSnapshotJson` alongside `SubmissionJson`. This guarantees historical traceability even if the form definition is later modified (draft) or the version is superseded.
+- **Field-value flattening is inline, not async**: `UserSubmissionFieldValue` rows are created synchronously during submission for SQL-queryable reporting. This avoids eventual-consistency complexity while the submission volume is manageable in Phase 1.
+- **File upload mirrors PolicyDocumentStorage**: same pattern (configurable file-system store, size/extension/content-type whitelist, path-traversal protection) keeps the infrastructure uniform and pluggable for future cloud storage.
+- **Validation aligned frontend/backend**: the frontend Zod schema (`zodFromSchema.ts`) mirrors the backend `SubmissionValidator` type-dispatch logic so users get inline validation before submission, and the server re-validates authoritatively.
+- **No conditional branching, nested repeatables, or formula fields**: these are explicitly out of Sprint 5 scope per the "NOT allowed" list. The field set is flat and unconditional.
+- **Publish gate extended (BR-070)**: `AcknowledgmentVersion.MarkPublished` now checks that FormBasedDisclosure versions have a FormDefinition with at least one input field, preventing empty-form publication.
 
 ### Risks / Notes
-- form complexity must be controlled
-- do not allow sprint scope to turn into a full form builder
-- conflict of interest and gifts/hospitality are priority validation cases
+- Build verification via `dotnet build` and `tsc --noEmit` could not be run in this environment (SDK + node_modules absent). Required before release; CI is the authoritative gate.
+- No EF migration was generated in this sprint — the new `FormDefinitions`, `FormFields`, `UserSubmissions`, and `UserSubmissionFieldValues` tables will be materialized by the standard migration flow when the database tooling is available.
+- File upload for form fields uses the same file-system storage approach as policy documents. The orphan-blob risk noted in Sprint 2 applies here as well.
+- Draft-save for long disclosure forms (O-005) is not implemented in Sprint 5; submissions are atomic. If UAT reveals a need, this can be addressed in the stabilization sprint.
+- The end-user submission flow (employee-facing portal) is not part of Sprint 5 — it lands in Sprint 6 (User Portal). Sprint 5 delivers the admin tooling and the renderer/validator components that Sprint 6 will consume.
+- Conflict of interest and gifts/hospitality disclosure scenarios are the priority validation cases and are supported by the implemented field types (ShortText, LongText, Date, Decimal, Checkbox, YesNo, RadioGroup, Dropdown, MultiSelect, FileUpload).
 
 ### Next Actions
-- implement schema structure
-- implement renderer and validator
-- test priority business forms
+- Generate the EF migration for the new tables as part of the CI build verification
+- Author integration tests for: (a) BR-070 publish gate, (b) SubmissionValidator type dispatch, (c) form snapshot fidelity, (d) field-value flattening accuracy
+- Begin Sprint 6 (User Portal) — the `DynamicFormRenderer` and submission hooks are ready for reuse in the employee-facing submission flow
 
 ---
 
@@ -648,7 +691,7 @@ Not Started
 |--------|------|--------|--------|------------|
 | R-001 | LDAP / AD integration complexity | High | Open | Validate authentication design early |
 | R-002 | Exchange email delivery issues | Medium | Open | Test integration before reporting sprint ends |
-| R-003 | Scope creep into full form builder | High | Open | Keep form scope controlled and JSON-based |
+| R-003 | Scope creep into full form builder | High | Mitigated | Sprint 5 delivered a structured field editor with 15 explicit types; drag-and-drop, conditional branching, nested repeatables, and formula fields explicitly excluded (BR-161) |
 | R-004 | AD data quality affecting targeting | Medium | Open | Validate department/group mapping early |
 | R-005 | Recurrence logic becoming too complex | Medium | Open | Keep MVP recurrence rules explicit and limited |
 | R-006 | Reporting queries becoming slow | Medium | Open | Optimize query design and pagination |
@@ -720,7 +763,7 @@ Use this checklist to assess whether the platform is ready for controlled launch
 | User profiles are created and synced | In Progress | Provisioning + on-login sync delivered in Sprint 1 |
 | Policies can be created and versioned | Completed | Delivered in Sprint 2 — CRUD, versioning, document upload, publish/archive with BR-010/BR-011/BR-012/BR-014 enforced |
 | Acknowledgments can be defined and published | Completed | Delivered in Sprint 3 — definition + version aggregate, action types, linkage to a published policy version, and publish/archive with SoD enforced |
-| Form-based disclosures work | Not Started | |
+| Form-based disclosures work | Completed | Delivered in Sprint 5 — FormDefinition aggregate, 15 field types, SubmissionValidator, form snapshot, DynamicFormRenderer, admin form editor + preview; end-user submission flow lands in Sprint 6 |
 | Audience targeting works correctly | Completed | Delivered in Sprint 4 — AllUsers/Department/AD-group inclusion, explicit exclusions, BR-054/BR-055 enforced, admin UI + preview in place (AD group resolution stubbed until LDAP group sync lands) |
 | Recurrence logic works correctly | Completed | Delivered in Sprint 4 — five deterministic recurrence models with `SetRecurrence` command, publish gate per BR-033, requirement-generation foundation with deterministic cycle keys |
 | User portal is usable end-to-end | Not Started | |

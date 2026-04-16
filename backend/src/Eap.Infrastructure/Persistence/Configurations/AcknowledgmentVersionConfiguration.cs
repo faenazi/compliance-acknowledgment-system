@@ -1,5 +1,6 @@
 using Eap.Domain.Acknowledgment;
 using Eap.Domain.Audience;
+using Eap.Domain.Forms;
 using Eap.Domain.Policy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -72,6 +73,13 @@ internal sealed class AcknowledgmentVersionConfiguration
         builder.HasOne(v => v.Audience)
             .WithOne()
             .HasForeignKey<AudienceDefinition>(a => a.AcknowledgmentVersionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // 0..1 form definition owned by the version (BR-070). Deleting the
+        // version cascades to its form definition.
+        builder.HasOne(v => v.FormDefinition)
+            .WithOne()
+            .HasForeignKey<FormDefinition>(f => f.AcknowledgmentVersionId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
